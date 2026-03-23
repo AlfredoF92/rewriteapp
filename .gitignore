@@ -1,0 +1,17 @@
+# WordPress sensitive/local config
+wp-config.php
+
+# Runtime and logs
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Dependencies and build artifacts
+node_modules/
+vendor/
+
+# Local environment/cache
+wp-content/cache/
+wp-content/uploads/cache/
+wp-content/upgrade/

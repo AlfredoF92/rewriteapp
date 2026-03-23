@@ -1,0 +1,747 @@
+/* Pagina singola Storia - Tema libro (font, colori uniti, niente bordi, fade) */
+
+div#content {
+    background-color: gainsboro;
+    background-image: url(http://localhost/readwrite/wp-content/uploads/2026/03/5.jpg);
+   
+}
+
+/* ---- Solo 2 font in tutto il sito: principale (testo) e mono (solo admin/codice) ---- */
+.lls-story-page {
+	--lls-ink: #2c2c2c;
+	--lls-ink-soft: #4a4a4a;
+	--lls-paper: #faf8f5;
+	--lls-paper-alt: #f5f2ed;
+	--lls-font: "Manrope", "Segoe UI", Arial, sans-serif;
+}
+
+/* ---- Base pagina (unico punto in cui si imposta il font: tutto il resto eredita) ---- */
+.lls-story-page {
+	max-width: 720px;
+	margin: 0 auto;
+	padding: 2em 1.25em;
+	font-family: var(--lls-font);
+	font-weight: 300;
+	font-size: 1.0625rem;
+	line-height: 1.7;
+	color: var(--lls-ink);
+	/*background: var(--lls-paper);*/
+}
+
+.lls-story-page h1,
+.lls-story-page h2,
+.lls-story-page h3,
+.lls-story-page h4 {
+	font-weight: 600;
+}
+
+.lls-story-root {
+	min-height: 200px;
+}
+
+@keyframes lls-fade-in {
+	from { opacity: 0; }
+	to { opacity: 1; }
+}
+
+@keyframes lls-fade-out {
+	from { opacity: 1; }
+	to { opacity: 0; }
+}
+
+/* Feedback: ogni box invisibile finché non inizia lo stream IA (carattere per carattere) */
+.lls-feedback .lls-feedback-box {
+	opacity: 0;
+	transition: opacity 0.35s ease;
+}
+
+.lls-feedback .lls-feedback-box.lls-ai-box-active {
+	opacity: 1;
+}
+
+.lls-rewrite-prompt.lls-initially-hidden {
+	opacity: 0;
+}
+
+.lls-rewrite-prompt.lls-ai-box-active {
+	opacity: 1;
+}
+
+/* Durante la pausa "IA che pensa" — solo cursore lampeggiante */
+.lls-ai-thinking {
+	display: flex;
+	align-items: center;
+	margin: 0.85em 0 0.65em;
+	min-height: 1.35em;
+	font-family: var(--lls-font);
+}
+
+/* Cursore nello stesso box dove partirà il testo (non più sopra la textarea) */
+.lls-ai-thinking--in-stream {
+	margin: 0;
+	min-height: 1.35em;
+	align-items: baseline;
+	align-self: flex-start;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+.lls-next-phrase-text .lls-ai-thinking--in-stream {
+	display: inline-flex;
+	width: auto;
+	min-height: 1.2em;
+	vertical-align: baseline;
+}
+
+.lls-main-body-stream > .lls-ai-thinking--in-stream:first-child,
+.lls-alternatives-body-stream > .lls-ai-thinking--in-stream:first-child,
+.lls-rewrite-stream > .lls-ai-thinking--in-stream:first-child,
+.lls-grammar-stream > .lls-ai-thinking--in-stream:first-child {
+	margin-top: 0;
+}
+
+.lls-ai-thinking-cursor {
+	display: inline-block;
+	width: 2px;
+	min-height: 1.15em;
+	height: 1.15em;
+	background: var(--lls-ink-soft);
+	opacity: 0.9;
+	animation: lls-cursor-blink 0.9s steps(1, end) infinite;
+	vertical-align: text-bottom;
+	border-radius: 1px;
+	flex-shrink: 0;
+}
+
+@keyframes lls-cursor-blink {
+	0%, 49% {
+		opacity: 0.85;
+	}
+	50%, 100% {
+		opacity: 0.08;
+	}
+}
+
+/* Fade out solo del blocco feedback (dopo Bravo) */
+.lls-feedback.lls-fade-out {
+	animation: lls-fade-out 0.4s ease forwards;
+	pointer-events: none;
+}
+
+/* Nascosti fino a quando non è finita la parte precedente */
+.lls-initially-hidden {
+	opacity: 0;
+	pointer-events: none;
+}
+
+.lls-just-visible {
+	animation: lls-fade-in 0.5s ease forwards;
+	pointer-events: auto;
+}
+
+.lls-story-loading {
+	color: var(--lls-ink-soft);
+	padding: 1.5em 0;
+}
+
+/* ---- Intestazione ---- */
+.lls-header {
+	margin-bottom: 1.75em;
+}
+
+.lls-story-title {
+	margin: 0 0 0.35em;
+	font-size: 1.65rem;
+	font-weight: 600;
+	color: var(--lls-ink);
+}
+
+.lls-progress-label {
+	font-size: 0.9rem;
+	color: var(--lls-ink-soft);
+	margin-bottom: 0.25em;
+}
+
+.lls-progress-bar-wrap {
+	height: 6px;
+	background: var(--lls-paper-alt);
+	overflow: hidden;
+	margin-bottom: 0.35em;
+}
+
+.lls-progress-bar {
+	height: 100%;
+	background: var(--lls-ink-soft);
+	transition: width 0.4s ease;
+}
+
+.lls-progress-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1em;
+	flex-wrap: wrap;
+}
+
+.lls-progress-counter {
+	font-size: 0.9rem;
+	color: var(--lls-ink-soft);
+}
+
+.lls-header-actions {
+	flex-shrink: 0;
+}
+
+.lls-restart-link {
+	display: inline-block;
+	font-size: 0.8rem;
+	color: var(--lls-ink-soft);
+	background: none;
+	border: none;
+	padding: 0.2em 0.5em;
+	cursor: pointer;
+	text-decoration: underline;
+	font-family: inherit;
+	transition: color 0.2s ease;
+}
+
+.lls-restart-link:hover {
+	color: var(--lls-ink);
+}
+
+/* ---- Storia costruita ---- */
+.lls-story-built {
+	background: transparent;
+	margin-bottom: 1.75em;
+	min-height: 4em;
+	color: var(--lls-ink);
+}
+
+.lls-story-built p {
+	margin: 0 0 0;
+}
+
+.lls-story-built p:not(.lls-story-built-empty) {
+	cursor: pointer;
+	transition: opacity 0.2s ease;
+}
+
+.lls-story-built p:not(.lls-story-built-empty):hover {
+	opacity: 0.85;
+}
+
+.lls-story-built .lls-story-new-sentence {
+	min-height: 1.6em;
+}
+
+.lls-story-built p:last-child {
+	margin-bottom: 0;
+}
+
+.lls-story-built .lls-story-image {
+	margin: 0.85em 0;
+	text-align: center;
+}
+
+.lls-story-built .lls-story-image img {
+	max-width: 100%;
+	height: auto;
+}
+
+.lls-story-built-empty {
+	color: var(--lls-ink-soft);
+	font-style: italic;
+}
+
+/* Tra la storia e prossima frase / feedback / completamento */
+.lls-story-divider {
+	border: none;
+	border-top: 1px solid var(--lls-ink-soft);
+	opacity: 0.5;
+	max-width: 14rem;
+	margin: 1.85em auto;
+	height: 0;
+}
+
+/* ---- Prossima frase ---- */
+.lls-next-phrase {
+	margin-bottom: 1.25em;
+}
+
+.lls-next-phrase-label {
+	font-size: 0.9rem;
+	color: var(--lls-ink-soft);
+	margin-bottom: 0.4em;
+}
+
+.lls-next-phrase-listenable-wrap {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.55em;
+}
+
+.lls-hear-main-translation {
+	flex-shrink: 0;
+	align-self: flex-start;
+	margin: 0.12em 0 0 0.15em;
+	padding: 0.25em;
+	border: none;
+	background: transparent;
+	color: var(--lls-ink-soft);
+	cursor: pointer;
+	border-radius: 0.4em;
+	line-height: 0;
+	transition: color 0.2s ease, background 0.2s ease;
+	font-family: inherit;
+}
+
+.lls-hear-main--pending {
+	display: none;
+}
+
+.lls-hear-main--reveal {
+	animation: lls-fade-in 0.45s ease forwards;
+}
+
+.lls-hear-main-translation:hover,
+.lls-hear-main-translation:focus-visible {
+	color: var(--lls-ink);
+	background: var(--lls-paper-alt);
+	outline: none;
+}
+
+.lls-hear-main-icon {
+	display: flex;
+}
+
+.lls-hear-main-icon svg {
+	display: block;
+}
+
+.lls-next-phrase-text {
+	flex: 1;
+	min-width: 0;
+	font-size: 1.2rem;
+	font-weight: 600;
+	color: var(--lls-ink);
+	line-height: 1.45;
+}
+
+.lls-next-phrase-can-hear .lls-next-phrase-text {
+	cursor: pointer;
+	transition: opacity 0.2s ease;
+}
+
+.lls-next-phrase-can-hear .lls-next-phrase-text:hover {
+	opacity: 0.9;
+}
+
+/* ---- Input traduzione ---- */
+.lls-input-section {
+	margin-bottom: 1.75em;
+}
+
+.lls-input-wrap {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6em;
+}
+
+.lls-input-with-mic {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 0.45em;
+}
+
+.lls-input-with-mic textarea {
+	width: 100%;
+	min-width: 0;
+}
+
+.lls-mic-wrap {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.2em;
+}
+
+.lls-mic-feedback {
+	font-size: 0.75rem;
+	color: var(--lls-ink-soft);
+	opacity: 0;
+	height: 0;
+	overflow: hidden;
+	transition: opacity 0.25s ease;
+}
+
+.lls-mic-feedback.lls-mic-feedback-visible {
+	opacity: 1;
+	height: auto;
+}
+
+.lls-btn-mic {
+	display: inline-flex;
+	align-items: flex-start;
+	gap: 0.45em;
+	width: auto;
+	max-width: 100%;
+	padding: 0.32em 0.65em 0.35em 0.55em;
+	border: none;
+	border-radius: 0.45em;
+	background: var(--lls-paper-alt);
+	color: var(--lls-ink);
+	font-size: 0.78rem;
+	line-height: 1.3;
+	text-align: left;
+	white-space: normal;
+	cursor: pointer;
+	transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+	user-select: none;
+	-webkit-user-select: none;
+	box-sizing: border-box;
+}
+
+.lls-btn-mic-icon {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	margin-top: 0.08em;
+	opacity: 0.9;
+}
+
+.lls-btn-mic-icon svg {
+	display: block;
+}
+
+.lls-btn-mic-text {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.08em;
+	min-width: 0;
+}
+
+.lls-btn-mic-label {
+	display: block;
+	line-height: 1.35;
+}
+
+.lls-btn-mic .lls-mic-hint {
+	display: block;
+	font-size: 0.68em;
+	line-height: 1.25;
+	color: var(--lls-ink-soft);
+	margin: 0;
+}
+
+.lls-btn-mic:hover:not(:disabled) {
+	background: var(--lls-ink-soft);
+	color: var(--lls-paper);
+}
+
+.lls-btn-mic:hover:not(:disabled) .lls-mic-hint {
+	color: rgba(250, 248, 245, 0.9);
+}
+
+.lls-btn-mic:active:not(:disabled) {
+	transform: scale(0.99);
+}
+
+.lls-btn-mic.lls-mic-active {
+	background: var(--lls-ink);
+	color: var(--lls-paper);
+	animation: lls-mic-pulse 1.2s ease-in-out infinite;
+}
+
+.lls-btn-mic.lls-mic-active .lls-mic-hint {
+	color: rgba(250, 248, 245, 0.9);
+}
+
+@keyframes lls-mic-pulse {
+	0%, 100% { box-shadow: 0 0 0 0 rgba(44, 44, 44, 0.35); }
+	50% { box-shadow: 0 0 0 8px rgba(44, 44, 44, 0); }
+}
+
+.lls-btn-mic.lls-mic-unavailable,
+.lls-btn-mic:disabled {
+	opacity: 0.4;
+	cursor: not-allowed;
+}
+
+.lls-input-wrap textarea {
+	width: 100%;
+	min-height: 2.5em;
+	padding: 0.5em 0.75em;
+	background: var(--lls-paper-alt);
+	color: var(--lls-ink);
+	font-size: 1rem;
+	line-height: 1.5;
+	box-sizing: border-box;
+	border: none;
+	border-radius: 0.75em;
+	transition: opacity 0.3s ease, background 0.2s ease;
+}
+
+.lls-input-wrap textarea:focus {
+	background: #efece7;
+	outline: none;
+}
+
+.lls-input-wrap textarea::placeholder {
+	color: var(--lls-ink-soft);
+	opacity: 0.85;
+}
+
+/* ---- Pulsanti ---- */
+.lls-btn {
+	display: inline-block;
+	padding: 0.5em 1.25em;
+	border: none;
+	background: var(--lls-ink);
+	color: var(--lls-paper);
+	font-size: 1rem;
+	cursor: pointer;
+	transition: opacity 0.3s ease, background 0.2s ease;
+}
+
+.lls-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* Continua: sempre visibile in basso */
+.lls-continua-wrap {
+	margin-top: 0.85em;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.45em;
+}
+
+.lls-btn-continua {
+	padding: 0.3em 0.6em;
+	font-size: 0.8rem;
+}
+
+.lls-continue-feedback {
+	font-size: 0.8rem;
+	line-height: 1.45;
+	color: var(--lls-ink-soft);
+	max-width: 32em;
+	margin: 0;
+	min-height: 0;
+	opacity: 0;
+	max-height: 0;
+	overflow: hidden;
+	transition: opacity 0.25s ease, max-height 0.35s ease;
+}
+
+.lls-continue-feedback.lls-continue-feedback-visible {
+	opacity: 1;
+	max-height: 5em;
+}
+
+/* Dopo riscrittura: Continua + messaggio successo + feedback */
+.lls-rewrite-actions {
+	margin-top: 0.75em;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.45em;
+}
+
+.lls-rewrite-success-box {
+	width: 100%;
+	max-width: 36em;
+}
+
+.lls-rewrite-success-box .lls-rewrite-success-stream {
+	font-size: 1.05rem;
+	line-height: 1.5;
+	color: var(--lls-ink);
+}
+
+.lls-rewrite-success-box.lls-rewrite-success-started {
+	pointer-events: none;
+}
+
+.lls-btn-continua:not(:disabled):hover {
+	opacity: 0.88;
+}
+
+/* ---- Feedback: stessi colori, niente bordi ---- */
+.lls-feedback {
+	margin-bottom: 1.75em;
+}
+
+.lls-feedback-box {
+	padding: 0;
+	margin-bottom: 1.25em;
+	background: transparent;
+	color: var(--lls-ink);
+}
+
+.lls-feedback-box:last-child {
+	margin-bottom: 0;
+}
+
+.lls-your-answer {
+	background: transparent;
+}
+
+/* Tutti i titoli feedback: stesso font e stesso peso */
+.lls-feedback-box h4,
+.lls-feedback-box .lls-ai-stream h4,
+.lls-bravo-intro-title {
+	font-family: var(--lls-font);
+	font-size: 0.95rem;
+	font-weight: 600;
+	text-transform: none;
+	letter-spacing: 0.01em;
+	color: var(--lls-ink);
+}
+
+.lls-feedback-box h4,
+.lls-feedback-box .lls-ai-stream h4,
+.lls-bravo-intro-title {
+	margin: 0 0 0.4em;
+	color: var(--lls-ink-soft);
+}
+
+.lls-bravo-intro .lls-bravo-intro-title {
+	color: var(--lls-ink);
+	margin-bottom: 0.15em;
+}
+
+.lls-grammar-tips {
+	background: transparent;
+}
+
+.lls-grammar-tips .lls-grammar-content {
+	font-size: 1rem;
+	line-height: 1.7;
+	white-space: pre-wrap;
+	color: var(--lls-ink);
+}
+
+/* Attesa analisi: fade sottile */
+.lls-grammar-wait {
+	color: var(--lls-ink-soft);
+	font-style: italic;
+	animation: lls-fade-soft 1.2s ease-in-out infinite;
+}
+
+@keyframes lls-fade-soft {
+	0%, 100% { opacity: 0.6; }
+	50% { opacity: 1; }
+}
+
+.lls-grammar-typewriter-target,
+.lls-grammar-stream.lls-grammar-content {
+	min-height: 1.6em;
+}
+
+.lls-grammar-typewriter-target .lls-typewriter-word {
+	display: inline;
+}
+
+.lls-alternatives,
+.lls-alternatives-stream {
+	background: transparent;
+	color: var(--lls-ink);
+}
+
+.lls-alternatives .lls-alt-line,
+.lls-alternatives-stream .lls-alt-line {
+	margin: 0;
+}
+
+.lls-alternatives .lls-alt-line + .lls-alt-line,
+.lls-alternatives-stream .lls-alt-line + .lls-alt-line {
+	margin-top: 0.65em;
+}
+
+/* Titoli immediati + corpo animato sotto */
+.lls-main-body-stream,
+.lls-alternatives-body-stream {
+	margin-top: 0.35em;
+}
+
+/* Riquadro riscrivi: stesso inchiostro, niente bordi (animazione con .lls-just-visible) */
+.lls-rewrite-prompt {
+	background: transparent;
+	padding: 0;
+	margin-bottom: 0.85em;
+	font-size: 1rem;
+	color: var(--lls-ink);
+}
+
+.lls-rewrite-phrase-reminder {
+	margin-top: 0.6em;
+	padding: 0.5em 0;
+	font-weight: 600;
+	color: var(--lls-ink);
+	font-style: italic;
+}
+
+/* ---- Fine storia ---- */
+.lls-story-complete {
+	text-align: center;
+	padding: 2.5em 1.5em;
+	background: transparent;
+	color: var(--lls-ink);
+	animation: lls-fade-in 0.6s ease forwards;
+}
+
+.lls-story-complete h2 {
+	margin: 0 0 0.4em;
+	color: var(--lls-ink);
+	font-size: 1.4rem;
+}
+
+.lls-story-complete p {
+	margin: 0;
+	color: var(--lls-ink-soft);
+}
+
+/* ---- Immagine di apertura ---- */
+.lls-opening-image {
+	text-align: center;
+	margin-bottom: 1.75em;
+	animation: lls-fade-in 0.5s ease forwards;
+}
+
+.lls-opening-image img {
+	max-width: 100%;
+	height: auto;
+}
+
+/* ---- Ricominciare la storia (pulsante non invadente) ---- */
+.lls-restart-wrap {
+	margin-top: 1.25em;
+	padding-top: 0.75em;
+}
+
+.lls-restart-btn {
+	display: inline-block;
+	padding: 0;
+	margin: 0;
+	border: none;
+	background: none;
+	color: var(--lls-ink-soft);
+	font-size: 0.875rem;
+	cursor: pointer;
+	text-decoration: none;
+	opacity: 0.85;
+	transition: opacity 0.25s ease, color 0.2s ease;
+}
+
+.lls-restart-btn:hover {
+	opacity: 1;
+	color: var(--lls-ink);
+}
+
+.lls-story-complete .lls-restart-wrap {
+	margin-top: 1.5em;
+}

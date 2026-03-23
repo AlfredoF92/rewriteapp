@@ -1,0 +1,586 @@
+/* Solo 2 font nel plugin: principale (ereditato da WP admin) e mono per codice/consigli */
+
+.lls-grammar-text {
+
+	font-family: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, Consolas, monospace;
+
+}
+
+
+
+.lls-story-info .lls-opening-image-wrapper {
+
+	display: flex;
+
+	flex-direction: column;
+
+	gap: 8px;
+
+}
+
+
+
+.lls-opening-image-preview img {
+
+	max-width: 260px;
+
+	height: auto;
+
+	display: block;
+
+}
+
+
+
+.lls-opening-image-placeholder {
+
+	display: inline-block;
+
+	padding: 12px 16px;
+
+	background: #f6f7f7;
+
+	border: 1px dashed #ccd0d4;
+
+	color: #555d66;
+
+}
+
+
+
+.lls-sentences-header {
+
+	margin-bottom: 10px;
+
+	display: flex;
+
+	flex-direction: column;
+
+	gap: 8px;
+
+}
+
+.lls-sentences-header-buttons {
+
+	display: flex;
+
+	flex-wrap: wrap;
+
+	gap: 6px;
+
+	align-items: center;
+
+}
+
+.lls-sentences-header .lls-csv-hint {
+
+	margin: 0;
+
+	max-width: 52em;
+
+}
+
+
+
+.lls-sentences-list {
+
+	border-top: 1px solid #e2e4e7;
+
+	margin-top: 10px;
+
+}
+
+
+
+.lls-sentence-card {
+
+	border-bottom: 1px solid #e2e4e7;
+
+	background: #fff;
+
+}
+
+
+
+.lls-sentence-header {
+
+	display: flex;
+
+	align-items: center;
+
+	justify-content: space-between;
+
+	padding: 8px 10px;
+
+	background: #f6f7f7;
+
+	border-bottom: 1px solid #e2e4e7;
+
+}
+
+
+
+.lls-sentence-handle {
+
+	cursor: move;
+
+	margin-right: 6px;
+
+	color: #555d66;
+
+}
+
+
+
+.lls-sentence-title {
+
+	font-weight: 600;
+
+	margin-right: 8px;
+
+}
+
+
+
+.lls-sentence-preview {
+
+	flex: 1;
+
+	font-size: 12px;
+
+	color: #555d66;
+
+	white-space: nowrap;
+
+	overflow: hidden;
+
+	text-overflow: ellipsis;
+
+}
+
+
+
+.lls-sentence-header .button-link,
+
+.lls-sentence-header .button-link-delete {
+
+	margin-left: 8px;
+
+}
+
+
+
+.lls-sentence-body {
+
+	padding: 10px 12px;
+
+	display: none;
+
+}
+
+
+
+.lls-sentence-card.is-open .lls-sentence-body {
+
+	display: block;
+
+}
+
+
+
+.lls-grammar-counter {
+
+	display: block;
+
+	font-size: 11px;
+
+	color: #555d66;
+
+	text-align: right;
+
+}
+
+
+
+.lls-insert-image-position {
+
+	margin-top: 8px;
+
+	display: flex;
+
+	gap: 8px;
+
+}
+
+
+
+.lls-images-wrapper {
+
+	margin-top: 20px;
+
+	padding-top: 10px;
+
+	border-top: 1px solid #e2e4e7;
+
+}
+
+
+
+.lls-image-card {
+
+	margin-top: 10px;
+
+	background: #fff;
+
+	border: 1px solid #e2e4e7;
+
+	padding: 8px;
+
+}
+
+
+
+.lls-image-inner {
+
+	display: flex;
+
+	align-items: center;
+
+	gap: 10px;
+
+}
+
+
+
+.lls-image-thumb img {
+
+	max-width: 80px;
+
+	height: auto;
+
+	display: block;
+
+}
+
+
+
+.lls-image-placeholder {
+
+	display: inline-block;
+
+	padding: 8px 10px;
+
+	background: #f6f7f7;
+
+	border: 1px dashed #ccd0d4;
+
+	color: #555d66;
+
+}
+
+
+
+.lls-image-actions .button {
+
+	margin-right: 6px;
+
+}
+
+
+
+.lls-sentences-list.ui-sortable .lls-sentence-card {
+
+	cursor: default;
+
+}
+
+
+
+/* Modal anteprima import CSV */
+
+.lls-modal-overlay {
+
+	position: fixed;
+
+	top: 0;
+
+	left: 0;
+
+	right: 0;
+
+	bottom: 0;
+
+	background: rgba(0, 0, 0, 0.6);
+
+	z-index: 100000;
+
+	display: flex;
+
+	align-items: center;
+
+	justify-content: center;
+
+	padding: 20px;
+
+	box-sizing: border-box;
+
+}
+
+
+
+.lls-modal-box {
+
+	background: #fff;
+
+	border-radius: 4px;
+
+	box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+
+	max-width: 900px;
+
+	width: 100%;
+
+	max-height: 85vh;
+
+	display: flex;
+
+	flex-direction: column;
+
+}
+
+
+
+.lls-modal-header {
+
+	display: flex;
+
+	align-items: center;
+
+	justify-content: space-between;
+
+	padding: 12px 16px;
+
+	border-bottom: 1px solid #e2e4e7;
+
+}
+
+
+
+.lls-modal-title {
+
+	margin: 0;
+
+	font-size: 18px;
+
+}
+
+
+
+.lls-modal-close {
+
+	background: none;
+
+	border: none;
+
+	font-size: 24px;
+
+	line-height: 1;
+
+	cursor: pointer;
+
+	color: #555d66;
+
+	padding: 0 4px;
+
+}
+
+
+
+.lls-modal-close:hover {
+
+	color: #1d2327;
+
+}
+
+
+
+.lls-modal-body {
+
+	padding: 16px;
+
+	overflow: auto;
+
+	flex: 1;
+
+}
+
+
+
+.lls-modal-description {
+
+	margin: 0 0 8px;
+
+	color: #555d66;
+
+	font-size: 13px;
+
+}
+
+
+
+.lls-modal-summary {
+
+	margin: 0 0 12px;
+
+	padding: 8px 12px;
+
+	background: #f0f6fc;
+
+	border-left: 3px solid #2271b1;
+
+	font-size: 13px;
+
+	font-weight: 600;
+
+	color: #1d2327;
+
+}
+
+
+
+.lls-import-preview-box {
+
+	background: #e8f5e9;
+
+	border: 1px solid #a5d6a7;
+
+	border-radius: 4px;
+
+	padding: 12px;
+
+	margin-bottom: 12px;
+
+}
+
+
+
+.lls-modal-table-wrap {
+
+	overflow: auto;
+
+	max-height: 50vh;
+
+	border: 1px solid #c8e6c9;
+
+	border-radius: 4px;
+
+	background: #fff;
+
+}
+
+
+
+.lls-import-preview-table {
+
+	width: 100%;
+
+	border-collapse: collapse;
+
+	font-size: 13px;
+
+}
+
+
+
+.lls-import-preview-table th,
+
+.lls-import-preview-table td {
+
+	padding: 8px 10px;
+
+	text-align: left;
+
+	border-bottom: 1px solid #e2e4e7;
+
+}
+
+
+
+.lls-import-preview-table th {
+
+	background: #f6f7f7;
+
+	font-weight: 600;
+
+}
+
+
+
+.lls-import-preview-table td {
+
+	vertical-align: top;
+
+}
+
+
+
+.lls-import-preview-table tbody tr:last-child td {
+
+	border-bottom: none;
+
+}
+
+
+
+.lls-action-badge {
+
+	display: inline-block;
+
+	padding: 2px 8px;
+
+	border-radius: 3px;
+
+	font-size: 12px;
+
+	font-weight: 500;
+
+}
+
+
+
+.lls-action-sostituita {
+
+	background: #fcf0e3;
+
+	color: #94660c;
+
+}
+
+
+
+.lls-action-aggiunta {
+
+	background: #edfaef;
+
+	color: #1e4620;
+
+}
+
+
+
+.lls-modal-footer {
+
+	display: flex;
+
+	justify-content: flex-end;
+
+	gap: 8px;
+
+	padding: 12px 16px;
+
+	border-top: 1px solid #e2e4e7;
+
+}
+
+
+

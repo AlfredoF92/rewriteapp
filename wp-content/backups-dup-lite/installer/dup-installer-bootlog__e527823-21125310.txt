@@ -1,0 +1,27 @@
+[Mar 21 12:54:54] 
+[Mar 21 12:54:54] ==DUPLICATOR INSTALLER BOOTSTRAP v1.5.15==
+[Mar 21 12:54:54] ----------------------------------------------------
+[Mar 21 12:54:54] Installer bootstrap start
+[Mar 21 12:54:54] Ready to extract the installer
+[Mar 21 12:54:54] Checking permission of destination folder
+[Mar 21 12:54:54] Expand directory from offset 127306680
+[Mar 21 12:55:23] No need to create dup-installer/.htaccess or dup-installer/.user.ini
+[Mar 21 12:55:23] SAPI: apache2handler
+[Mar 21 12:55:23] Set permissions of dup-installer<br/>
+[Mar 21 12:55:23] Set permissions of dup-installer/addons<br/>
+[Mar 21 12:55:23] Set permissions of dup-installer/assets<br/>
+[Mar 21 12:55:23] Set permissions of dup-installer/classes<br/>
+[Mar 21 12:55:23] Set permissions of dup-installer/ctrls<br/>
+[Mar 21 12:55:23] Set permissions of dup-installer/favicon<br/>
+[Mar 21 12:55:23] Set permissions of dup-installer/libs<br/>
+[Mar 21 12:55:23] Set permissions of dup-installer/original_files_[HASH]<br/>
+[Mar 21 12:55:23] Set permissions of dup-installer/src<br/>
+[Mar 21 12:55:23] Set permissions of dup-installer/templates<br/>
+[Mar 21 12:55:23] Set permissions of dup-installer/vendor<br/>
+[Mar 21 12:55:23] Set permissions of dup-installer/dup-archive__[HASH].txt<br/>
+[Mar 21 12:55:23] Set permissions of dup-installer/dup-scan__[HASH].json<br/>
+[Mar 21 12:55:23] Set permissions of dup-installer/dup-scanned-dirs__[HASH].txt<br/>
+[Mar 21 12:55:23] Set permissions of dup-installer/dup-scanned-files__[HASH].txt<br/>
+[Mar 21 12:55:23] Set permissions of dup-installer/index.php<br/>
+[Mar 21 12:55:23] Set permissions of dup-installer/main.installer.php<br/>
+[Mar 21 12:55:23] DONE: No detected errors so redirecting to the main installer. Main Installer URI = http://localhost/rewrite2026/dup-installer/main.installer.php
