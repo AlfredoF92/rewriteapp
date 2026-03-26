@@ -396,6 +396,7 @@ div#content {
 	text-align: left;
 	white-space: normal;
 	cursor: pointer;
+	touch-action: manipulation;
 	transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
 	user-select: none;
 	-webkit-user-select: none;
@@ -650,6 +651,17 @@ div#content {
 .lls-alternatives-stream {
 	background: transparent;
 	color: var(--lls-ink);
+}
+
+/* Mentre si scrive nella riscrittura: nascondi le traduzioni di riferimento (anti-sbircia) */
+.lls-feedback-box.lls-main-translation.lls-peek-obscured,
+.lls-feedback-box.lls-alternatives.lls-peek-obscured {
+	filter: blur(14px);
+	-webkit-filter: blur(14px);
+	user-select: none;
+	-webkit-user-select: none;
+	pointer-events: none;
+	transition: filter 0.35s ease, -webkit-filter 0.35s ease;
 }
 
 .lls-alternatives .lls-alt-line,

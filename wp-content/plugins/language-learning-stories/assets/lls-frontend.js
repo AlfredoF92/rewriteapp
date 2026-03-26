@@ -45,6 +45,18 @@
 
 	var LLS_REWRITE_SUCCESS_HTML = '<p>Bravo! Ottimo lavoro… Continuiamo la storia…</p>';
 	var LLS_REWRITE_SUCCESS_DELAY_MS = 3000;
+	/** Pausa prima che appaia il box «Traduzioni alternative» (dopo la traduzione principale) */
+	var LLS_ALTERNATIVES_APPEAR_DELAY_MS = 3000;
+
+	function llsHasAtLeastOneWord(s) {
+		if (!s || typeof s !== 'string') return false;
+		return s.trim().split(/\s+/).filter(Boolean).length > 0;
+	}
+
+	function llsUpdateTranslationPeekProtect($root) {
+		var obscure = llsHasAtLeastOneWord($('#lls-rewrite-input').val() || '');
+		$root.find('.lls-main-translation, .lls-alternatives').toggleClass('lls-peek-obscured', obscure);
+	}
 
 	/** Come per l\'ex pulsante «Bravo»: confronto esatto ignorando maiuscole e punteggiatura */
 	function normalizeForMatch(s) {
@@ -231,6 +243,10 @@
 		return images.filter(function (img) { return img.position === pos && img.url; });
 	}
 
+	/** Evita che un click breve o un reflow layout chiuda l’ascolto prima che parta il motore vocale */
+	var LLS_MIC_MIN_HOLD_MS = 320;
+	var LLS_MIC_FEEDBACK_DEFAULT = 'In ascolto…';
+
 	// Microfono: mantieni premuto per dettare (Web Speech API)
 	function setupMicButton($btn, $textarea) {
 		if (!$btn.length || !$textarea.length) return;
@@ -242,16 +258,49 @@
 
 		var recognition = null;
 		var textBeforeSession = '';
+		var sessionStartTs = 0;
+		var stopAfterMinHoldTimer = null;
+		var startRetryCount = 0;
+		var $feedback = $btn.siblings('.lls-mic-feedback');
+
+		function clearStopTimer() {
+			if (stopAfterMinHoldTimer) {
+				clearTimeout(stopAfterMinHoldTimer);
+				stopAfterMinHoldTimer = null;
+			}
+		}
+
+		function resetFeedbackText() {
+			$feedback.text(LLS_MIC_FEEDBACK_DEFAULT);
+		}
+
+		function applyMicUi(active) {
+			$btn.toggleClass('lls-mic-active', !!active);
+			$feedback.toggleClass('lls-mic-feedback-visible', !!active);
+		}
+
+		function tearDownRecognitionInstance() {
+			recognition = null;
+			startRetryCount = 0;
+			clearStopTimer();
+			applyMicUi(false);
+		}
 
 		function startRecognition() {
 			if (recognition) return;
+			clearStopTimer();
+			resetFeedbackText();
 			textBeforeSession = $textarea.val();
-			recognition = new SpeechRecognition();
-			recognition.continuous = true;
-			recognition.interimResults = true;
-			recognition.lang = 'en-US';
+			sessionStartTs = Date.now();
+			applyMicUi(true);
 
-			recognition.onresult = function (e) {
+			var rec = new SpeechRecognition();
+			recognition = rec;
+			rec.continuous = true;
+			rec.interimResults = true;
+			rec.lang = 'en-US';
+
+			rec.onresult = function (e) {
 				var sessionText = '';
 				for (var i = 0; i < e.results.length; i++) {
 					sessionText += e.results[i][0].transcript;
@@ -261,45 +310,111 @@
 				$textarea.trigger('input');
 			};
 
-			recognition.onerror = function (e) {
-				if (e.error !== 'aborted' && e.error !== 'no-speech') {
+			rec.onstart = function () {
+				resetFeedbackText();
+				applyMicUi(true);
+			};
+
+			rec.onerror = function (e) {
+				var err = e && e.error ? e.error : '';
+				if (err === 'aborted') return;
+				if (err === 'no-speech') return;
+				var msg = null;
+				if (err === 'not-allowed' || err === 'service-not-allowed') {
+					msg = 'Microfono non consentito: controlla i permessi del sito nel browser.';
+				} else if (err === 'network') {
+					msg = 'Errore di rete nel riconoscimento vocale. Riprova.';
+				} else if (err === 'audio-capture') {
+					msg = 'Impossibile usare il microfono (nessuna sorgente audio).';
+				}
+				if (recognition === rec) {
 					recognition = null;
+				}
+				clearStopTimer();
+				$btn.removeClass('lls-mic-active');
+				if (msg) {
+					$feedback.text(msg).addClass('lls-mic-feedback-visible');
+					setTimeout(function () {
+						$feedback.removeClass('lls-mic-feedback-visible');
+						resetFeedbackText();
+					}, 4500);
+				} else {
+					applyMicUi(false);
+					resetFeedbackText();
 				}
 			};
 
-			recognition.onend = function () {
-				recognition = null;
-				$btn.removeClass('lls-mic-active');
-				$btn.siblings('.lls-mic-feedback').removeClass('lls-mic-feedback-visible');
+			rec.onend = function () {
+				if (recognition !== rec) return;
+				tearDownRecognitionInstance();
 			};
 
-			$btn.addClass('lls-mic-active');
-			$btn.siblings('.lls-mic-feedback').addClass('lls-mic-feedback-visible');
-			recognition.start();
+			try {
+				rec.start();
+			} catch (err) {
+				if (err && err.name === 'InvalidStateError' && startRetryCount < 1) {
+					startRetryCount++;
+					recognition = null;
+					setTimeout(function () {
+						startRecognition();
+					}, 120);
+					return;
+				}
+				tearDownRecognitionInstance();
+				$feedback.text('Impossibile avviare l’ascolto. Riprova tra un attimo.').addClass('lls-mic-feedback-visible');
+				setTimeout(function () {
+					$feedback.removeClass('lls-mic-feedback-visible');
+					resetFeedbackText();
+				}, 3500);
+			}
 		}
 
 		function stopRecognition() {
+			clearStopTimer();
+			var elapsed = sessionStartTs ? Date.now() - sessionStartTs : LLS_MIC_MIN_HOLD_MS;
+			if (elapsed < LLS_MIC_MIN_HOLD_MS) {
+				stopAfterMinHoldTimer = setTimeout(function () {
+					stopAfterMinHoldTimer = null;
+					stopRecognition();
+				}, LLS_MIC_MIN_HOLD_MS - elapsed);
+				return;
+			}
 			if (recognition) {
-				recognition.abort();
+				try {
+					recognition.abort();
+				} catch (e) { /* ignore */ }
 				recognition = null;
 			}
-			$btn.removeClass('lls-mic-active');
-			$btn.siblings('.lls-mic-feedback').removeClass('lls-mic-feedback-visible');
+			applyMicUi(false);
+			resetFeedbackText();
 		}
 
-		$btn.on('mousedown touchstart', function (e) {
-			e.preventDefault();
-			startRecognition();
-		});
+		$btn.off('.llsMic');
 
-		$btn.on('mouseup touchend mouseleave', function (e) {
-			if (e.type === 'mouseleave' && e.buttons !== 1) return;
-			stopRecognition();
-		});
-
-		$(document).off('mouseup.lls-mic touchend.lls-mic').on('mouseup.lls-mic touchend.lls-mic', function () {
-			stopRecognition();
-		});
+		if (window.PointerEvent) {
+			$btn.on('pointerdown.llsMic', function (e) {
+				if (e.button !== undefined && e.button !== 0) return;
+				e.preventDefault();
+				try {
+					e.currentTarget.setPointerCapture(e.pointerId);
+				} catch (ignore) { /* ignore */ }
+				startRecognition();
+			});
+			$btn.on('pointerup.llsMic pointercancel.llsMic lostpointercapture.llsMic', function () {
+				stopRecognition();
+			});
+		} else {
+			$btn.on('mousedown.llsMic touchstart.llsMic', function (e) {
+				e.preventDefault();
+				startRecognition();
+			});
+			$btn.on('mouseup.llsMic touchend.llsMic', function () {
+				stopRecognition();
+			});
+			$(document).off('mouseup.llsMicGlobal touchend.llsMicGlobal').on('mouseup.llsMicGlobal touchend.llsMicGlobal', function () {
+				stopRecognition();
+			});
+		}
 	}
 
 	function transitionThenRender(done) {
@@ -416,8 +531,8 @@
 						'<div class="lls-input-with-mic">' +
 							'<textarea id="lls-translation-input" placeholder="Scrivi o pronuncia la traduzione della prossima frase della storia" rows="4"></textarea>' +
 							'<div class="lls-mic-wrap">' +
-								'<span class="lls-mic-feedback" aria-live="polite">In ascolto…</span>' +
 								'<button type="button" class="lls-btn-mic" id="lls-btn-mic" aria-label="Mantieni premuto per pronunciare la frase">' + LLS_MIC_BTN_INNER + '</button>' +
+								'<span class="lls-mic-feedback" aria-live="polite">In ascolto…</span>' +
 							'</div>' +
 						'</div>' +
 						'<div class="lls-continua-wrap">' +
@@ -511,8 +626,8 @@
 					'<div class="lls-input-with-mic">' +
 						'<textarea id="lls-rewrite-input" placeholder="Riscrivi o pronuncia la frase utilizzando una delle traduzioni consigliate" rows="3"></textarea>' +
 						'<div class="lls-mic-wrap">' +
-							'<span class="lls-mic-feedback" aria-live="polite">In ascolto…</span>' +
 							'<button type="button" class="lls-btn-mic" id="lls-btn-mic-rewrite" aria-label="Mantieni premuto per pronunciare la frase">' + LLS_MIC_BTN_INNER + '</button>' +
+							'<span class="lls-mic-feedback" aria-live="polite">In ascolto…</span>' +
 						'</div>' +
 					'</div>' +
 					'<div class="lls-rewrite-actions">' +
@@ -532,7 +647,9 @@
 
 		$('#lls-rewrite-input').on('input', function () {
 			$root.find('.lls-rewrite-actions .lls-continue-feedback').removeClass('lls-continue-feedback-visible').text('');
+			llsUpdateTranslationPeekProtect($root);
 		});
+		llsUpdateTranslationPeekProtect($root);
 
 		function advanceStoryAfterRewrite() {
 			var main = (current.main_translation || current.alt1 || current.alt2 || '').trim();
@@ -645,18 +762,20 @@
 
 			function stepAlts() {
 				if (altsOnly.length) {
-					$root.find('.lls-alternatives').addClass('lls-ai-box-active');
-					var $altStream = $root.find('.lls-alternatives-stream');
-					$altStream.html('<h4>Traduzioni alternative</h4><div class="lls-alternatives-body-stream"></div>');
-					var htmlAltsBody = altsOnly.map(function (a) {
-						return '<p class="lls-alt-line">' + escapeHtml(a) + '</p>';
-					}).join('');
-					var $altBody = $altStream.find('.lls-alternatives-body-stream');
-					llsAfterThinkingIn($root, $altBody, function () {
-						runTypewriterCharsWithFormatting($altBody, htmlAltsBody, d, function () {
-							showRewriteBlock();
-						});
-					});
+					setTimeout(function () {
+						var $altBox = $root.find('.lls-alternatives');
+						var $altStream = $root.find('.lls-alternatives-stream');
+						var htmlAltsBody = altsOnly.map(function (a) {
+							return '<p class="lls-alt-line">' + escapeHtml(a) + '</p>';
+						}).join('');
+						// Tutto il box in una volta: niente cursore né typewriter; il fade è quello di .lls-ai-box-active
+						$altStream.html(
+							'<h4>Traduzioni alternative</h4>' +
+								'<div class="lls-alternatives-body-stream">' + htmlAltsBody + '</div>'
+						);
+						$altBox.addClass('lls-ai-box-active');
+						setTimeout(showRewriteBlock, 400);
+					}, LLS_ALTERNATIVES_APPEAR_DELAY_MS);
 				} else {
 					showRewriteBlock();
 				}
