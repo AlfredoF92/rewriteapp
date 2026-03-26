@@ -1,0 +1,12 @@
+---
+description: Ogni commit include l'intero albero di lavoro (tranne .gitignore)
+alwaysApply: true
+---
+
+# Git: commit di tutti i file
+
+Quando l'utente chiede un commit, un push, o di salvare il lavoro su GitHub:
+
+1. Usa **`git add -A`** dalla root del repository (`rewrite2026`), così entrano **tutte** le modifiche, i file nuovi e le cancellazioni rispetto all’ultimo commit — non limitarti al solo plugin o a un sottoinsieme di cartelle.
+2. Poi `git commit` con messaggio chiaro e `git push` se richiesto.
+3. Rispetta comunque **`.gitignore`** (es. `wp-config.php` e quanto già escluso): non forzare file ignorati salvo richiesta esplicita dell’utente.
