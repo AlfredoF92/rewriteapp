@@ -35,6 +35,23 @@
 			.replace(/>/g, '&gt;');
 	}
 
+	/** Pulsante volume (stesso markup per «prossima frase» e blocco riscrittura) */
+	function llsHearMainTranslationButtonHtml(englishForListen) {
+		var t = (englishForListen || '').trim();
+		if (!t) return '';
+		return (
+			'<button type="button" class="lls-hear-main-translation lls-hear-main--pending" aria-label="Ascolta la traduzione in inglese" title="Ascolta la traduzione in inglese (puoi cliccare anche sulla frase)" aria-hidden="true" tabindex="-1">' +
+				'<span class="lls-hear-main-icon" aria-hidden="true">' +
+					'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+						'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>' +
+						'<path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>' +
+						'<path d="M19.07 4.93a9 9 0 0 1 0 14.14"/>' +
+					'</svg>' +
+				'</span>' +
+			'</button>'
+		);
+	}
+
 	/** Primo «Continua» (traduzione iniziale): overlap ≥20% */
 	var LLS_CONTINUE_FIRST_TRANSLATION_HINT =
 		'Per continuare prova a scrivere almeno un paio di parole in inglese corrette…';
@@ -124,6 +141,8 @@
 
 	/** Typewriter IA: carattere per carattere (stesso ritmo del feedback) */
 	var LLS_AI_CHAR_DELAY_MS = 30;
+	/** Traduzioni alternative: stesso effetto ma più rapido */
+	var LLS_ALT_TYPEWRITER_CHAR_DELAY_MS = 10;
 	var LLS_AI_THINKING_PAUSE_MS = 2000;
 
 	/** Contenuto interno del pulsante microfono (traduzione + riscrittura) */
@@ -504,19 +523,7 @@
 		if (!state.showFeedback) {
 			// Traduzione inglese da riprodurre al clic (principale o prima alternativa disponibile)
 			var englishMainForListen = (current.main_translation || current.alt1 || current.alt2 || '').trim();
-			var hearMainBtnHtml = '';
-			if (englishMainForListen) {
-				hearMainBtnHtml =
-					'<button type="button" class="lls-hear-main-translation lls-hear-main--pending" aria-label="Ascolta la traduzione in inglese" title="Ascolta la traduzione in inglese (puoi cliccare anche sulla frase)" aria-hidden="true" tabindex="-1">' +
-						'<span class="lls-hear-main-icon" aria-hidden="true">' +
-							'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-								'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>' +
-								'<path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>' +
-								'<path d="M19.07 4.93a9 9 0 0 1 0 14.14"/>' +
-							'</svg>' +
-						'</span>' +
-					'</button>';
-			}
+			var hearMainBtnHtml = llsHearMainTranslationButtonHtml(englishMainForListen);
 			// Prossima frase + primo input (frase italiana con typewriter lento)
 			var nextHtml =
 				'<div class="lls-next-phrase">' +
@@ -768,13 +775,18 @@
 						var htmlAltsBody = altsOnly.map(function (a) {
 							return '<p class="lls-alt-line">' + escapeHtml(a) + '</p>';
 						}).join('');
-						// Tutto il box in una volta: niente cursore né typewriter; il fade è quello di .lls-ai-box-active
+						var dAlts = LLS_ALT_TYPEWRITER_CHAR_DELAY_MS;
 						$altStream.html(
 							'<h4>Traduzioni alternative</h4>' +
-								'<div class="lls-alternatives-body-stream">' + htmlAltsBody + '</div>'
+								'<div class="lls-alternatives-body-stream"></div>'
 						);
+						var $altBody = $altStream.find('.lls-alternatives-body-stream');
 						$altBox.addClass('lls-ai-box-active');
-						setTimeout(showRewriteBlock, 400);
+						llsAfterThinkingIn($root, $altBody, function () {
+							runTypewriterCharsWithFormatting($altBody, htmlAltsBody, dAlts, function () {
+								setTimeout(showRewriteBlock, 400);
+							});
+						});
 					}, LLS_ALTERNATIVES_APPEAR_DELAY_MS);
 				} else {
 					showRewriteBlock();
@@ -785,11 +797,33 @@
 				var $rp = $root.find('.lls-rewrite-prompt');
 				var $inputWrap = $root.find('.lls-feedback .lls-input-wrap');
 				var $rwStream = $root.find('.lls-rewrite-stream');
+				var englishListenRw = (current.main_translation || current.alt1 || current.alt2 || '').trim();
+				var hearBtnRw = llsHearMainTranslationButtonHtml(englishListenRw);
 				$rp.removeClass('lls-initially-hidden').addClass('lls-ai-box-active');
-				var htmlRw = '<p>Ora riscrivi la frase dopo aver letto i consigli e le possibili varianti:</p>' +
-					'<p class="lls-rewrite-phrase-reminder">' + escapeHtml(current.text_it) + '</p>';
-				llsAfterThinkingIn($root, $rwStream, function () {
-					runTypewriterCharsWithFormatting($rwStream, htmlRw, d, function () {
+				$rwStream.html(
+					'<h4>Ora riscrivi la frase dopo aver letto i consigli e le possibili varianti:</h4>' +
+						'<div class="lls-rewrite-body-stream"></div>'
+				);
+				var $rwBody = $rwStream.find('.lls-rewrite-body-stream');
+				var htmlPhraseRw = '<p>' + escapeHtml(current.text_it) + '</p>';
+				llsAfterThinkingIn($root, $rwBody, function () {
+					$rwBody.html(
+						'<div class="lls-next-phrase-listenable-wrap">' +
+							'<div class="lls-next-phrase-text lls-typewriter-target"></div>' +
+							hearBtnRw +
+							'</div>'
+					);
+					var $wrapRw = $rwBody.find('.lls-next-phrase-listenable-wrap').first();
+					var $phraseRw = $wrapRw.find('.lls-next-phrase-text');
+					if (englishListenRw) {
+						$wrapRw.data('llsSpeakEn', englishListenRw);
+					}
+					runTypewriterCharsWithFormatting($phraseRw, htmlPhraseRw, d, function () {
+						var $hearRw = $wrapRw.find('.lls-hear-main-translation');
+						if ($hearRw.length) {
+							$wrapRw.addClass('lls-next-phrase-can-hear');
+							$hearRw.removeClass('lls-hear-main--pending').addClass('lls-hear-main--reveal').attr('aria-hidden', 'false').removeAttr('tabindex');
+						}
 						$inputWrap.removeClass('lls-initially-hidden').addClass('lls-just-visible');
 					});
 				});

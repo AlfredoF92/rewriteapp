@@ -508,14 +508,14 @@ class LLS_Plugin {
 			'lls-frontend-style',
 			$plugin_url . 'assets/lls-frontend.css',
 			[ 'lls-frontend-font' ],
-			'0.1.29'
+			'0.1.33'
 		);
 
 		wp_enqueue_script(
 			'lls-frontend-script',
 			$plugin_url . 'assets/lls-frontend.js',
 			[ 'jquery' ],
-			'0.1.29',
+			'0.1.33',
 			true
 		);
 

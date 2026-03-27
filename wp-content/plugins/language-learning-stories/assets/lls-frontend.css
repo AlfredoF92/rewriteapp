@@ -16,13 +16,19 @@ div#content {
 }
 
 /* ---- Base pagina (unico punto in cui si imposta il font: tutto il resto eredita) ---- */
+#lls-story-page.lls-story-page,
 .lls-story-page {
+	box-sizing: border-box;
+	width: 100%;
 	max-width: 720px;
-	margin: 0 auto;
-	padding: 2em 1.25em;
+	/* Larghezza minima stabile su schermi larghi; su viewport stretti non supera mai il 100% del contenitore */
+	min-width: min(100%, 18.5rem);
+	margin-left: auto;
+	margin-right: auto;
+	padding: clamp(1.25rem, 4vw, 2em) clamp(0.75rem, 4vw, 1.25em);
 	font-family: var(--lls-font);
 	font-weight: 300;
-	font-size: 1.0625rem;
+	font-size: clamp(1rem, 2.8vw, 1.0625rem);
 	line-height: 1.7;
 	color: var(--lls-ink);
 	/*background: var(--lls-paper);*/
@@ -95,7 +101,7 @@ div#content {
 
 .lls-main-body-stream > .lls-ai-thinking--in-stream:first-child,
 .lls-alternatives-body-stream > .lls-ai-thinking--in-stream:first-child,
-.lls-rewrite-stream > .lls-ai-thinking--in-stream:first-child,
+.lls-rewrite-body-stream > .lls-ai-thinking--in-stream:first-child,
 .lls-grammar-stream > .lls-ai-thinking--in-stream:first-child {
 	margin-top: 0;
 }
@@ -325,6 +331,10 @@ div#content {
 	font-weight: 600;
 	color: var(--lls-ink);
 	line-height: 1.45;
+}
+
+.lls-next-phrase-text > p {
+	margin: 0;
 }
 
 .lls-next-phrase-can-hear .lls-next-phrase-text {
@@ -594,6 +604,8 @@ div#content {
 /* Tutti i titoli feedback: stesso font e stesso peso */
 .lls-feedback-box h4,
 .lls-feedback-box .lls-ai-stream h4,
+.lls-rewrite-prompt h4,
+.lls-rewrite-stream h4,
 .lls-bravo-intro-title {
 	font-family: var(--lls-font);
 	font-size: 0.95rem;
@@ -605,6 +617,8 @@ div#content {
 
 .lls-feedback-box h4,
 .lls-feedback-box .lls-ai-stream h4,
+.lls-rewrite-prompt h4,
+.lls-rewrite-stream h4,
 .lls-bravo-intro-title {
 	margin: 0 0 0.4em;
 	color: var(--lls-ink-soft);
@@ -676,7 +690,8 @@ div#content {
 
 /* Titoli immediati + corpo animato sotto */
 .lls-main-body-stream,
-.lls-alternatives-body-stream {
+.lls-alternatives-body-stream,
+.lls-rewrite-body-stream {
 	margin-top: 0.35em;
 }
 
@@ -687,14 +702,6 @@ div#content {
 	margin-bottom: 0.85em;
 	font-size: 1rem;
 	color: var(--lls-ink);
-}
-
-.lls-rewrite-phrase-reminder {
-	margin-top: 0.6em;
-	padding: 0.5em 0;
-	font-weight: 600;
-	color: var(--lls-ink);
-	font-style: italic;
 }
 
 /* ---- Fine storia ---- */
