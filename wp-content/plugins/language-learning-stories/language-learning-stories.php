@@ -35,15 +35,22 @@ class LLS_Plugin {
 		add_action( 'wp_ajax_lls_save_progress', [ $this, 'ajax_save_progress' ] );
 		add_action( 'wp_ajax_nopriv_lls_save_progress', [ $this, 'ajax_save_progress' ] );
 
-		add_action( 'admin_menu', [ $this, 'add_translations_submenu' ] );
+		add_action( 'admin_menu', [ $this, 'add_story_lang_submenus' ], 11 );
+		add_action( 'admin_menu', [ $this, 'mark_story_lang_submenu_classes' ], 999 );
+		add_action( 'admin_menu', [ $this, 'add_translations_submenu' ], 25 );
+		add_filter( 'submenu_file', [ $this, 'submenu_file_for_lls_lang_list' ], 10, 2 );
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_menu_lang_style' ] );
 		add_action( 'admin_post_lls_save_ui_strings', [ $this, 'handle_save_ui_strings' ] );
 
 		add_filter( 'manage_lls_story_posts_columns', [ $this, 'story_list_columns' ] );
 		add_action( 'manage_lls_story_posts_custom_column', [ $this, 'story_list_column_content' ], 10, 2 );
+
+		add_action( 'restrict_manage_posts', [ $this, 'stories_admin_list_filters' ], 10, 2 );
+		add_action( 'pre_get_posts', [ $this, 'filter_stories_admin_list_query' ] );
 	}
 
 	/**
-	 * Colonne extra nell’elenco «Tutte le storie»: lingua interfaccia e numero frasi.
+	 * Colonne extra nell’elenco storie: lingua interfaccia e numero frasi.
 	 *
 	 * @param string[] $columns Colonne esistenti.
 	 * @return string[]
@@ -85,6 +92,249 @@ class LLS_Plugin {
 			$n         = is_array( $sentences ) ? count( $sentences ) : 0;
 			echo esc_html( (string) (int) $n );
 			return;
+		}
+	}
+
+	/**
+	 * Voci lingua subito dopo «Storie in inglese» (pos. 1–2). WP non ha un vero sottomenu annidato:
+	 * l’indentazione è data da .lls-story-lang-sub in CSS (vedi mark_story_lang_submenu_classes).
+	 */
+	public function add_story_lang_submenus() {
+		$parent = 'edit.php?post_type=lls_story';
+		add_submenu_page(
+			$parent,
+			__( '...per gli italiani', 'language-learning-stories' ),
+			__( '...per gli italiani', 'language-learning-stories' ),
+			'edit_posts',
+			'edit.php?post_type=lls_story&lls_admin_lang=it',
+			'',
+			1
+		);
+		add_submenu_page(
+			$parent,
+			__( '...per i polacchi', 'language-learning-stories' ),
+			__( '...per i polacchi', 'language-learning-stories' ),
+			'edit_posts',
+			'edit.php?post_type=lls_story&lls_admin_lang=pl',
+			'',
+			2
+		);
+	}
+
+	/**
+	 * Aggiunge la classe CSS sulle voci lingua (indentazione come “figlie” della prima voce elenco).
+	 */
+	public function mark_story_lang_submenu_classes() {
+		global $submenu;
+		$parent = 'edit.php?post_type=lls_story';
+		if ( empty( $submenu[ $parent ] ) || ! is_array( $submenu[ $parent ] ) ) {
+			return;
+		}
+		foreach ( $submenu[ $parent ] as $key => $item ) {
+			if ( ! isset( $item[2] ) || ! is_string( $item[2] ) ) {
+				continue;
+			}
+			if ( false === strpos( $item[2], 'lls_admin_lang=' ) ) {
+				continue;
+			}
+			$submenu[ $parent ][ $key ][4] = 'lls-story-lang-sub';
+		}
+	}
+
+	/**
+	 * Stili menu admin: indentazione voci lingua (tutte le pagine admin per chi vede il menu Storie).
+	 */
+	public function enqueue_admin_menu_lang_style() {
+		if ( ! is_admin() || ! current_user_can( 'edit_posts' ) ) {
+			return;
+		}
+		$pto = get_post_type_object( 'lls_story' );
+		if ( ! $pto || ! $pto->show_ui ) {
+			return;
+		}
+		$handle = 'lls-admin-menu-lang';
+		wp_register_style( $handle, false, [], LLS_PLUGIN_VERSION );
+		wp_enqueue_style( $handle );
+		$css = '
+#adminmenu .wp-submenu li.lls-story-lang-sub > a {
+	padding-left: 24px;
+	position: relative;
+	font-size: 12px;
+	opacity: 0.92;
+}
+#adminmenu .wp-submenu li.lls-story-lang-sub > a::before {
+	content: "";
+	position: absolute;
+	left: 10px;
+	top: 50%;
+	width: 4px;
+	height: 4px;
+	margin-top: -2px;
+	border-radius: 50%;
+	background: currentColor;
+	opacity: 0.45;
+}
+#adminmenu .wp-submenu li.lls-story-lang-sub.current > a::before {
+	opacity: 0.85;
+}
+';
+		wp_add_inline_style( $handle, $css );
+	}
+
+	/**
+	 * Evidenzia nel menu la voce corretta quando l’elenco è filtrato per lingua.
+	 *
+	 * @param string|null $submenu_file Valore impostato da edit.php.
+	 * @param string      $parent_file  File genitore.
+	 * @return string|null
+	 */
+	public function submenu_file_for_lls_lang_list( $submenu_file, $parent_file ) {
+		if ( 'edit.php?post_type=lls_story' !== $parent_file ) {
+			return $submenu_file;
+		}
+		$lang = isset( $_GET['lls_admin_lang'] ) ? sanitize_key( wp_unslash( $_GET['lls_admin_lang'] ) ) : '';
+		if ( 'it' === $lang ) {
+			return 'edit.php?post_type=lls_story&lls_admin_lang=it';
+		}
+		if ( 'pl' === $lang ) {
+			return 'edit.php?post_type=lls_story&lls_admin_lang=pl';
+		}
+		return $submenu_file;
+	}
+
+	/**
+	 * Filtri (lingua, categoria, tag) sopra l’elenco storie in admin.
+	 *
+	 * @param string $post_type Post type della schermata.
+	 * @param string $which     'top' o 'bottom'.
+	 */
+	public function stories_admin_list_filters( $post_type, $which = 'top' ) {
+		if ( 'lls_story' !== $post_type ) {
+			return;
+		}
+		if ( 'bottom' === $which ) {
+			return;
+		}
+
+		$lang_sel = isset( $_GET['lls_admin_lang'] ) ? sanitize_key( wp_unslash( $_GET['lls_admin_lang'] ) ) : '';
+		$cat_sel  = isset( $_GET['lls_admin_cat'] ) ? (int) $_GET['lls_admin_cat'] : 0;
+		$tag_sel  = isset( $_GET['lls_admin_tag'] ) ? (int) $_GET['lls_admin_tag'] : 0;
+
+		?>
+		<select name="lls_admin_lang" id="lls_admin_lang" class="postform" style="float:none;display:inline-block;max-width:14rem;margin-right:8px;">
+			<option value=""><?php esc_html_e( 'Tutte le lingue', 'language-learning-stories' ); ?></option>
+			<option value="it" <?php selected( $lang_sel, 'it' ); ?>><?php esc_html_e( 'Italiano', 'language-learning-stories' ); ?></option>
+			<option value="pl" <?php selected( $lang_sel, 'pl' ); ?>><?php esc_html_e( 'Polacco', 'language-learning-stories' ); ?></option>
+			<option value="es" <?php selected( $lang_sel, 'es' ); ?>><?php esc_html_e( 'Spagnolo', 'language-learning-stories' ); ?></option>
+		</select>
+		<?php
+		wp_dropdown_categories(
+			[
+				'show_option_all' => __( 'Tutte le categorie', 'language-learning-stories' ),
+				'taxonomy'        => 'lls_story_category',
+				'name'            => 'lls_admin_cat',
+				'id'              => 'lls_admin_cat',
+				'orderby'         => 'name',
+				'hierarchical'    => true,
+				'depth'           => 0,
+				'show_count'      => false,
+				'hide_empty'      => false,
+				'selected'        => $cat_sel,
+				'value_field'     => 'term_id',
+				'class'           => 'postform',
+			]
+		);
+		wp_dropdown_categories(
+			[
+				'show_option_all' => __( 'Tutti i tag', 'language-learning-stories' ),
+				'taxonomy'        => 'lls_story_tag',
+				'name'            => 'lls_admin_tag',
+				'id'              => 'lls_admin_tag',
+				'orderby'         => 'name',
+				'hierarchical'    => false,
+				'show_count'      => false,
+				'hide_empty'      => false,
+				'selected'        => $tag_sel,
+				'value_field'     => 'term_id',
+				'class'           => 'postform',
+			]
+		);
+	}
+
+	/**
+	 * Applica filtri lingua / categoria / tag alla query dell’elenco storie in admin.
+	 *
+	 * @param WP_Query $query Query principale.
+	 */
+	public function filter_stories_admin_list_query( $query ) {
+		if ( ! is_admin() || ! $query->is_main_query() ) {
+			return;
+		}
+		global $pagenow;
+		if ( 'edit.php' !== $pagenow ) {
+			return;
+		}
+		$post_type = isset( $_GET['post_type'] ) ? sanitize_key( wp_unslash( $_GET['post_type'] ) ) : '';
+		if ( 'lls_story' !== $post_type ) {
+			return;
+		}
+
+		$lang = isset( $_GET['lls_admin_lang'] ) ? sanitize_key( wp_unslash( $_GET['lls_admin_lang'] ) ) : '';
+		if ( $lang && function_exists( 'lls_known_lang_codes' ) && in_array( $lang, lls_known_lang_codes(), true ) ) {
+			$meta_query   = $query->get( 'meta_query' );
+			$meta_query   = is_array( $meta_query ) ? $meta_query : [];
+
+			// Italiano è il default anche senza meta salvato (come in elenco e editor).
+			if ( 'it' === $lang ) {
+				$meta_query[] = [
+					'relation' => 'OR',
+					[
+						'key'     => '_lls_known_lang',
+						'compare' => 'NOT EXISTS',
+					],
+					[
+						'key'     => '_lls_known_lang',
+						'value'   => '',
+						'compare' => '=',
+					],
+					[
+						'key'     => '_lls_known_lang',
+						'value'   => 'it',
+						'compare' => '=',
+					],
+				];
+			} else {
+				$meta_query[] = [
+					'key'   => '_lls_known_lang',
+					'value' => $lang,
+				];
+			}
+			$query->set( 'meta_query', $meta_query );
+		}
+
+		$cat_id = isset( $_GET['lls_admin_cat'] ) ? (int) $_GET['lls_admin_cat'] : 0;
+		$tag_id = isset( $_GET['lls_admin_tag'] ) ? (int) $_GET['lls_admin_tag'] : 0;
+
+		$tax_query = [];
+		if ( $cat_id > 0 ) {
+			$tax_query[] = [
+				'taxonomy' => 'lls_story_category',
+				'field'    => 'term_id',
+				'terms'    => [ $cat_id ],
+			];
+		}
+		if ( $tag_id > 0 ) {
+			$tax_query[] = [
+				'taxonomy' => 'lls_story_tag',
+				'field'    => 'term_id',
+				'terms'    => [ $tag_id ],
+			];
+		}
+		if ( count( $tax_query ) > 1 ) {
+			$tax_query['relation'] = 'AND';
+		}
+		if ( ! empty( $tax_query ) ) {
+			$query->set( 'tax_query', $tax_query );
 		}
 	}
 
@@ -223,7 +473,7 @@ class LLS_Plugin {
 			'add_new_item'       => __( 'Aggiungi nuova storia', 'language-learning-stories' ),
 			'edit_item'          => __( 'Modifica storia', 'language-learning-stories' ),
 			'new_item'           => __( 'Nuova storia', 'language-learning-stories' ),
-			'all_items'          => __( 'Tutte le storie', 'language-learning-stories' ),
+			'all_items'          => __( 'Storie in inglese', 'language-learning-stories' ),
 			'view_item'          => __( 'Vedi storia', 'language-learning-stories' ),
 			'search_items'       => __( 'Cerca storie', 'language-learning-stories' ),
 			'not_found'          => __( 'Nessuna storia trovata', 'language-learning-stories' ),
