@@ -13,9 +13,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once __DIR__ . '/includes/lls-ui-strings.php';
 require_once __DIR__ . '/includes/lls-header-shortcodes.php';
+require_once __DIR__ . '/includes/lls-app-logo-shortcodes.php';
 require_once __DIR__ . '/includes/lls-footer-app-nav-settings.php';
 require_once __DIR__ . '/includes/lls-footer-shortcodes.php';
 require_once __DIR__ . '/includes/lls-profile-shortcodes.php';
+require_once __DIR__ . '/includes/lls-login-shortcodes.php';
+require_once __DIR__ . '/includes/lls-login-intro-settings.php';
+require_once __DIR__ . '/includes/lls-login-intro-shortcodes.php';
+require_once __DIR__ . '/includes/lls-require-login-shortcodes.php';
+require_once __DIR__ . '/includes/lls-register-shortcodes.php';
 
 define( 'LLS_PLUGIN_VERSION', '0.2.1' );
 
@@ -43,10 +49,12 @@ class LLS_Plugin {
 		add_action( 'admin_menu', [ $this, 'add_translations_submenu' ], 25 );
 		add_action( 'admin_menu', [ $this, 'add_documentation_submenu' ], 26 );
 		add_action( 'admin_menu', [ $this, 'add_footer_app_nav_settings_submenu' ], 27 );
+		add_action( 'admin_menu', [ $this, 'add_login_intro_settings_submenu' ], 28 );
 		add_filter( 'submenu_file', [ $this, 'submenu_file_for_lls_lang_list' ], 10, 2 );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_menu_lang_style' ] );
 		add_action( 'admin_post_lls_save_ui_strings', [ $this, 'handle_save_ui_strings' ] );
 		add_action( 'admin_post_lls_save_footer_app_nav_settings', [ $this, 'handle_save_footer_app_nav_settings' ] );
+		add_action( 'admin_post_lls_save_login_intro_settings', [ $this, 'handle_save_login_intro_settings' ] );
 		add_action( 'admin_post_lls_update_user_profile', [ $this, 'handle_update_user_profile' ] );
 
 		add_filter( 'manage_lls_story_posts_columns', [ $this, 'story_list_columns' ] );
@@ -397,6 +405,29 @@ class LLS_Plugin {
 	}
 
 	/**
+	 * Testi e link iscrizione per [lls_login_intro].
+	 */
+	public function add_login_intro_settings_submenu() {
+		add_submenu_page(
+			'edit.php?post_type=lls_story',
+			__( 'Pagina Login', 'language-learning-stories' ),
+			__( 'Pagina Login', 'language-learning-stories' ),
+			'manage_options',
+			'lls-login-intro',
+			[ $this, 'render_login_intro_settings_page' ]
+		);
+	}
+
+	/**
+	 * Pagina impostazioni testi login.
+	 */
+	public function render_login_intro_settings_page() {
+		if ( function_exists( 'lls_login_intro_render_settings_page' ) ) {
+			lls_login_intro_render_settings_page();
+		}
+	}
+
+	/**
 	 * Salva opzione lls_ui_strings dal form Traduzioni.
 	 */
 	public function handle_save_ui_strings() {
@@ -429,6 +460,24 @@ class LLS_Plugin {
 			$redirect = admin_url( 'edit.php?post_type=lls_story&page=lls-footer-app-nav' );
 		}
 		wp_safe_redirect( add_query_arg( 'lls_footer_nav_saved', '1', $redirect ) );
+		exit;
+	}
+
+	/**
+	 * Salva testi pagina login (shortcode lls_login_intro).
+	 */
+	public function handle_save_login_intro_settings() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Permessi insufficienti.', 'language-learning-stories' ) );
+		}
+		check_admin_referer( 'lls_save_login_intro_settings', 'lls_login_intro_nonce' );
+		$raw = isset( $_POST['lls_login_intro'] ) ? wp_unslash( $_POST['lls_login_intro'] ) : [];
+		update_option( LLS_LOGIN_INTRO_OPTION, lls_login_intro_sanitize_settings( $raw ) );
+		$redirect = isset( $_POST['_wp_http_referer'] ) ? esc_url_raw( wp_unslash( $_POST['_wp_http_referer'] ) ) : '';
+		if ( ! $redirect ) {
+			$redirect = admin_url( 'edit.php?post_type=lls_story&page=lls-login-intro' );
+		}
+		wp_safe_redirect( add_query_arg( 'lls_login_intro_saved', '1', $redirect ) );
 		exit;
 	}
 
@@ -640,8 +689,35 @@ class LLS_Plugin {
 		$documentation_groups = [
 			[
 				'group_title' => __( 'Shortcode per intestazione (header)', 'language-learning-stories' ),
-				'group_intro' => __( 'Da usare nel tema o nel contenuto dell’header: saluto con link all’area personale e riepilogo giornaliero delle frasi completate.', 'language-learning-stories' ),
+				'group_intro' => __( 'Da usare nel tema o nel contenuto dell’header: logo app, saluto con link all’area personale e riepilogo giornaliero delle frasi completate.', 'language-learning-stories' ),
 				'sections'    => [
+					[
+						'tag'    => 'lls_app_logo',
+						'title'  => __( 'Logo / nome app (ReWrite)', 'language-learning-stories' ),
+						'intro'  => __( 'Wordmark «ReWrite» con R e W grandi e e / rite piccoli, stessa gerarchia tipografica del menu footer (CSS dedicato lls-app-logo.css, variabili --lls-app-nav-big / --lls-app-nav-rest). Link predefinito: pagina library (/library/ sotto la home; filtro lls_app_logo_default_path per lo slug).', 'language-learning-stories' ),
+						'where'  => __( 'Header, barra superiore o inizio contenuto.', 'language-learning-stories' ),
+						'attrs'  => [
+							[
+								'name'     => 'path',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'Slug percorso sotto la home, es. library. Se vuoto e anche url vuoto → library. Ha priorità se url è vuoto.', 'language-learning-stories' ),
+								'help'     => '',
+							],
+							[
+								'name'     => 'url',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'URL completo o percorso che inizia con /. Se vuoto si usa path o il default library.', 'language-learning-stories' ),
+								'help'     => '',
+							],
+							[
+								'name'     => 'link',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => '1 (predefinito), 0 o false per solo testo senza link.',
+								'help'     => '',
+							],
+						],
+						'ex'     => [ '[lls_app_logo]', '[lls_app_logo path="library"]', '[lls_app_logo url="/community/"]', '[lls_app_logo link="0"]' ],
+					],
 					[
 						'tag'    => 'lls_header_greeting',
 						'title'  => __( 'Saluto (header)', 'language-learning-stories' ),
@@ -708,8 +784,92 @@ class LLS_Plugin {
 			],
 			[
 				'group_title' => __( 'Shortcode per area utente (personale)', 'language-learning-stories' ),
-				'group_intro' => __( 'Da usare sulla pagina area personale (es. /area-personale/): saluto, storie in corso, modifica account. Richiedono in genere utente connesso, salvo i messaggi per ospiti dove indicato.', 'language-learning-stories' ),
+				'group_intro' => __( 'Da usare sulla pagina area personale (es. /area-personale/): saluto, storie in corso, modifica account, accesso e iscrizione. Richiedono in genere utente connesso, salvo i messaggi per ospiti o i moduli login/iscrizione dove indicato.', 'language-learning-stories' ),
 				'sections'    => [
+					[
+						'tag'    => 'lls_login',
+						'title'  => __( 'Accesso (login)', 'language-learning-stories' ),
+						'intro'  => __( 'Modulo username/email e password con lo stesso aspetto dell’area profilo (Manrope, campi e pulsante .lls-btn). L’accesso avviene con wp_signon sul server: in caso di errore si resta sulla stessa pagina con un messaggio (nessun redirect a wp-login.php). Dopo il login corretto si va all’URL in redirect, oppure a redirect_to / lls_redirect_to nella query string se l’attributo redirect è vuoto (utile con [lls_require_login]). Link a password dimenticata e, se le registrazioni sono attive, a iscrizione.', 'language-learning-stories' ),
+						'where'  => __( 'Pagina «Accedi», sidebar, o area personale per gli ospiti.', 'language-learning-stories' ),
+						'attrs'  => [
+							[
+								'name'     => 'redirect',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'URL assoluto dopo il login. Vuoto = parametro GET redirect_to o lls_redirect_to se presente, altrimenti pagina corrente (o home).', 'language-learning-stories' ),
+								'help'     => __( 'Validato con wp_validate_redirect rispetto alla home del sito. Usato da [lls_require_login] tramite redirect_to nell’URL.', 'language-learning-stories' ),
+							],
+							[
+								'name'     => 'title',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'Testo del titolo sopra il modulo. Vuoto = nessun titolo.', 'language-learning-stories' ),
+								'help'     => __( 'Usa la classe titolo storia (.lls-story-title) per coerenza visiva.', 'language-learning-stories' ),
+							],
+							[
+								'name'     => 'logged_in',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => 'message (predefinito), hide',
+								'help'     => __( 'Se l’utente è già connesso: mostra messaggio e pulsante «Esci», oppure non mostra nulla.', 'language-learning-stories' ),
+							],
+						],
+						'ex'     => [ '[lls_login]', '[lls_login title="Accedi" redirect="/area-personale/"]', '[lls_login logged_in="hide"]' ],
+					],
+					[
+						'tag'    => 'lls_login_intro',
+						'title'  => __( 'Intestazione pagina login (testi multilingua)', 'language-learning-stories' ),
+						'intro'  => __( 'Blocco da mettere sopra [lls_login]. Quattro lingue (English, Español, Italiano, Polski): al clic si aggiornano saluto, testo e riga iscrizione; la scelta resta in localStorage. Lingua iniziale predefinita: inglese. I testi si modificano da Storie → Pagina Login (campo vuoto = default del plugin). Link iscrizione predefinito /registrati/ (configurabile in quella pagina). Filtro PHP lls_login_intro_strings per override da codice.', 'language-learning-stories' ),
+						'where'  => __( 'Pagina di accesso, sopra al modulo login.', 'language-learning-stories' ),
+						'attrs'  => [
+							[
+								'name'     => 'register_url',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'Sovrascrive l’URL del link iscrizione rispetto a Storie → Pagina Login.', 'language-learning-stories' ),
+								'help'     => '',
+							],
+						],
+						'ex'     => [ '[lls_login_intro]', '[lls_login_intro register_url="/altra-pagina/"]' ],
+					],
+					[
+						'tag'    => 'lls_require_login',
+						'title'  => __( 'Obbligo accesso (redirect ospiti)', 'language-learning-stories' ),
+						'intro'  => __( 'Mettilo nel contenuto della pagina (es. area personale): se l’utente non è loggato, viene reindirizzato subito alla pagina di login, senza mostrare il resto della pagina. L’URL di ritorno dopo il login viene passato come redirect_to (compatibile con [lls_login]). Se l’attributo login è vuoto si usa wp-login.php di WordPress.', 'language-learning-stories' ),
+						'where'  => __( 'In cima al contenuto delle pagine riservate agli utenti registrati.', 'language-learning-stories' ),
+						'attrs'  => [
+							[
+								'name'     => 'login',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'URL assoluto o percorso sotto la home della pagina con [lls_login], es. /accedi/. Vuoto = wp-login.php.', 'language-learning-stories' ),
+								'help'     => __( 'Il redirect di ritorno è la pagina che contiene questo shortcode.', 'language-learning-stories' ),
+							],
+						],
+						'ex'     => [ '[lls_require_login]', '[lls_require_login login="/accedi/"]' ],
+					],
+					[
+						'tag'    => 'lls_register',
+						'title'  => __( 'Iscrizione (registrazione)', 'language-learning-stories' ),
+						'intro'  => __( 'Username, email e una sola password: controlli essenziali (campi non vuoti, email formalmente valida). Se l’email è già registrata l’iscrizione viene rifiutata. Se lo username è già usato WordPress lo segnala. Dopo la registrazione l’utente viene collegato automaticamente e reindirizzato. Non viene inviata email di conferma all’utente (filtro wp_send_new_user_notification_to_user). Richiede «Chiunque può registrarsi» in Impostazioni → Generale.', 'language-learning-stories' ),
+						'where'  => __( 'Pagina «Iscriviti» o accanto al modulo login.', 'language-learning-stories' ),
+						'attrs'  => [
+							[
+								'name'     => 'redirect',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'URL dopo l’iscrizione (e login automatico). Vuoto = pagina corrente.', 'language-learning-stories' ),
+								'help'     => __( 'Validato con wp_validate_redirect.', 'language-learning-stories' ),
+							],
+							[
+								'name'     => 'title',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'Titolo sopra il modulo. Vuoto = nessun titolo.', 'language-learning-stories' ),
+								'help'     => '',
+							],
+							[
+								'name'     => 'logged_in',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => 'message (predefinito), hide',
+								'help'     => __( 'Se l’utente è già connesso: messaggio e «Esci» oppure nulla.', 'language-learning-stories' ),
+							],
+						],
+						'ex'     => [ '[lls_register]', '[lls_register title="Iscriviti" redirect="/area-personale/"]', '[lls_register logged_in="hide"]' ],
+					],
 					[
 						'tag'    => 'lls_profile_greeting',
 						'title'  => __( 'Saluto area personale', 'language-learning-stories' ),
@@ -1486,6 +1646,25 @@ class LLS_Plugin {
 			'0.2.0'
 		);
 
+		$story_bg_abs = content_url( 'uploads/2026/03/5.jpg' );
+		$story_bg_rel = wp_make_link_relative( $story_bg_abs );
+		if ( ! is_string( $story_bg_rel ) || $story_bg_rel === '' ) {
+			$story_bg_rel = wp_parse_url( $story_bg_abs, PHP_URL_PATH );
+		}
+		if ( is_string( $story_bg_rel ) && $story_bg_rel !== '' && '/' !== $story_bg_rel[0] ) {
+			$story_bg_rel = '/' . ltrim( $story_bg_rel, '/' );
+		}
+		if ( ! is_string( $story_bg_rel ) || $story_bg_rel === '' ) {
+			$story_bg_rel = '/wp-content/uploads/2026/03/5.jpg';
+		}
+		wp_add_inline_style(
+			'lls-frontend-style',
+			sprintf(
+				'body.single-lls_story #content>.ast-container{background-color:transparent;background-image:url(%s);background-size:cover;background-position:center;background-repeat:no-repeat;}#lls-story-page.lls-story-page,.lls-story-page{background-color:transparent;background-image:none;}',
+				esc_url( $story_bg_rel )
+			)
+		);
+
 		wp_enqueue_script(
 			'lls-frontend-script',
 			$plugin_url . 'assets/lls-frontend.js',
@@ -1580,6 +1759,13 @@ class LLS_Plugin {
 		);
 
 		wp_enqueue_style(
+			'lls-app-logo',
+			$plugin_url . 'assets/lls-app-logo.css',
+			[ 'lls-shortcodes-shared' ],
+			LLS_PLUGIN_VERSION
+		);
+
+		wp_enqueue_style(
 			'lls-footer-app-nav',
 			$plugin_url . 'assets/lls-footer-app-nav.css',
 			[ 'lls-shortcodes-shared' ],
@@ -1593,9 +1779,24 @@ class LLS_Plugin {
 			LLS_PLUGIN_VERSION
 		);
 
+		wp_enqueue_style(
+			'lls-login-shortcodes',
+			$plugin_url . 'assets/lls-login-shortcodes.css',
+			[ 'lls-profile-shortcodes' ],
+			LLS_PLUGIN_VERSION
+		);
+
 		wp_register_script(
 			'lls-profile-account',
 			$plugin_url . 'assets/lls-profile-account.js',
+			[],
+			LLS_PLUGIN_VERSION,
+			true
+		);
+
+		wp_register_script(
+			'lls-login-intro',
+			$plugin_url . 'assets/lls-login-intro.js',
 			[],
 			LLS_PLUGIN_VERSION,
 			true

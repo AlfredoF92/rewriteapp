@@ -153,12 +153,13 @@ function lls_shortcode_footer_app_nav( $atts ) {
 		}
 	}
 
-	$nav_label    = __( 'App navigation', 'language-learning-stories' );
-	$nav_style    = '';
-	$style_decl   = function_exists( 'lls_footer_app_nav_inline_style_declarations' ) ? lls_footer_app_nav_inline_style_declarations() : '';
+	$nav_label  = __( 'App navigation', 'language-learning-stories' );
+	$nav_inline = [ 'background:transparent', 'background-color:transparent' ];
+	$style_decl = function_exists( 'lls_footer_app_nav_inline_style_declarations' ) ? lls_footer_app_nav_inline_style_declarations() : '';
 	if ( $style_decl !== '' ) {
-		$nav_style = ' style="' . esc_attr( $style_decl ) . '"';
+		$nav_inline[] = $style_decl;
 	}
+	$nav_style = ' style="' . esc_attr( implode( ';', $nav_inline ) ) . '"';
 
 	ob_start();
 	?>

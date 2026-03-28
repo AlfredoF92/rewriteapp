@@ -1,0 +1,63 @@
+/**
+ * Logo ReWrite — header: bianco, tipografia più grande (rest più leggibile).
+ */
+
+.lls-shortcodes .lls-app-logo {
+	display: inline-block;
+	line-height: 1;
+	vertical-align: middle;
+	font-family: var(--lls-font, "Manrope", "Segoe UI", Arial, sans-serif);
+}
+
+.lls-shortcodes a.lls-app-logo__link,
+.lls-shortcodes a.lls-app-logo__link:visited {
+	color: #fff !important;
+	text-decoration: none !important;
+}
+
+.lls-shortcodes a.lls-app-logo__link:hover,
+.lls-shortcodes a.lls-app-logo__link:focus-visible {
+	color: rgba(255, 255, 255, 0.9) !important;
+	opacity: 1;
+	outline: none;
+}
+
+.lls-shortcodes .lls-app-logo__wordmark {
+	display: inline-flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	align-items: baseline;
+	justify-content: flex-start;
+	line-height: 1;
+	font-family: var(--lls-font, "Manrope", "Segoe UI", Arial, sans-serif);
+}
+
+/* R / W grandi; e / rite più grandi rispetto al precedente clamp “footer” */
+.lls-shortcodes .lls-app-logo .lls-app-logo__wordmark > .lls-app-logo__big {
+	font-family: inherit;
+	font-size: clamp(2rem, 6.5vw, 3rem) !important;
+	font-weight: 700 !important;
+	letter-spacing: -0.04em;
+	line-height: 1 !important;
+	color: #fff !important;
+}
+
+.lls-shortcodes .lls-app-logo .lls-app-logo__wordmark > .lls-app-logo__rest {
+	font-family: inherit;
+	font-size: clamp(0.95rem, 3.4vw, 1.2rem) !important;
+	font-weight: 600 !important;
+	letter-spacing: 0.02em;
+	line-height: 1 !important;
+	color: rgba(255, 255, 255, 0.92) !important;
+	white-space: nowrap;
+}
+
+@media (min-width: 480px) {
+	.lls-shortcodes .lls-app-logo .lls-app-logo__wordmark > .lls-app-logo__big {
+		font-size: clamp(2.15rem, 4.2vw, 2.85rem) !important;
+	}
+
+	.lls-shortcodes .lls-app-logo .lls-app-logo__wordmark > .lls-app-logo__rest {
+		font-size: clamp(1rem, 2.2vw, 1.15rem) !important;
+	}
+}

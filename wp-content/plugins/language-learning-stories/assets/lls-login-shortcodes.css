@@ -1,0 +1,172 @@
+/* Login e iscrizione: campi e pulsanti da lls-shortcodes-shared + lls-profile-shortcodes */
+
+/* Intestazione login (intro multilingua) */
+.lls-shortcodes .lls-login-intro {
+	max-width: 36rem;
+	margin-bottom: 1.75rem;
+}
+
+.lls-shortcodes .lls-login-intro__lang {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+	margin-bottom: 1rem;
+}
+
+.lls-shortcodes .lls-login-intro__lang-btn {
+	font-family: var(--lls-font, inherit);
+	font-size: 0.82rem;
+	font-weight: 600;
+	padding: 0.35rem 0.75rem;
+	border: 1px solid rgba(44, 44, 44, 0.22);
+	border-radius: 999px;
+	background: #fff;
+	color: var(--lls-ink-soft, #4a4a4a);
+	cursor: pointer;
+	transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.lls-shortcodes .lls-login-intro__lang-btn:hover {
+	border-color: rgba(44, 44, 44, 0.4);
+	color: var(--lls-ink, #2c2c2c);
+}
+
+.lls-shortcodes .lls-login-intro__lang-btn--active {
+	background: var(--lls-ink, #2c2c2c);
+	color: var(--lls-paper, #faf8f5);
+	border-color: var(--lls-ink, #2c2c2c);
+}
+
+.lls-shortcodes .lls-login-intro__greeting {
+	margin: 0 0 0.5rem;
+	font-size: 1.35rem;
+	font-weight: 600;
+	line-height: 1.25;
+	color: var(--lls-ink, #2c2c2c);
+}
+
+.lls-shortcodes .lls-login-intro__body {
+	margin: 0 0 1rem;
+	font-size: 0.98rem;
+	line-height: 1.65;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
+.lls-shortcodes .lls-login-intro__register {
+	margin: 0;
+	font-size: 0.95rem;
+	line-height: 1.55;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
+.lls-shortcodes .lls-login-intro__register-link {
+	color: var(--lls-ink-soft, #4a4a4a);
+	text-decoration: underline;
+	text-underline-offset: 0.15em;
+	font-weight: 600;
+}
+
+.lls-shortcodes .lls-login-intro__register-link:hover {
+	color: var(--lls-ink, #2c2c2c);
+}
+
+.lls-shortcodes .lls-login__title {
+	margin-bottom: 1rem;
+}
+
+.lls-shortcodes .lls-login__notice {
+	margin-bottom: 1rem;
+}
+
+.lls-shortcodes .lls-login__form {
+	max-width: 28rem;
+}
+
+.lls-shortcodes .lls-login__remember {
+	margin-bottom: 0.35rem;
+}
+
+.lls-shortcodes .lls-login__remember-label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	font-weight: 400;
+	font-size: 0.95rem;
+	cursor: pointer;
+	margin: 0;
+}
+
+.lls-shortcodes .lls-login__remember-label input[type='checkbox'] {
+	margin: 0;
+	width: 1rem;
+	height: 1rem;
+	accent-color: var(--lls-ink, #2c2c2c);
+	cursor: pointer;
+}
+
+.lls-shortcodes input.lls-btn.lls-login__submit {
+	-webkit-appearance: none;
+	appearance: none;
+	cursor: pointer;
+	border: none;
+}
+
+.lls-shortcodes .lls-login__links {
+	margin: 1.25rem 0 0;
+	font-size: 0.92rem;
+	line-height: 1.5;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
+.lls-shortcodes .lls-login__links-sep {
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
+.lls-shortcodes .lls-login--logged-in .lls-login__logged-msg {
+	margin: 0 0 0.75rem;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
+.lls-shortcodes .lls-login--logged-in .lls-login__logged-actions {
+	margin: 0;
+}
+
+/* Iscrizione */
+.lls-shortcodes .lls-register__title {
+	margin-bottom: 1rem;
+}
+
+.lls-shortcodes .lls-register__notice {
+	margin-bottom: 1rem;
+}
+
+.lls-shortcodes .lls-register__form {
+	max-width: 28rem;
+}
+
+.lls-shortcodes input.lls-btn.lls-register__submit {
+	-webkit-appearance: none;
+	appearance: none;
+	cursor: pointer;
+	border: none;
+}
+
+.lls-shortcodes .lls-register__links {
+	margin: 1.25rem 0 0;
+	font-size: 0.92rem;
+	line-height: 1.5;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
+.lls-shortcodes .lls-register--logged-in .lls-register__logged-msg {
+	margin: 0 0 0.75rem;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
+.lls-shortcodes .lls-register--logged-in .lls-register__logged-actions {
+	margin: 0;
+}
+
+.lls-shortcodes .lls-register--closed .lls-register__notice {
+	margin: 0;
+}
