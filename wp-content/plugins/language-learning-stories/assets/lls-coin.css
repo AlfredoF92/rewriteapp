@@ -1,5 +1,5 @@
 /**
- * Shortcode Coin: totale frasi completate.
+ * Shortcode Coin e [lls_total_phrases] (stessa classe .lls-coin).
  */
 .lls-shortcodes .lls-coin {
 	display: inline-flex;
@@ -10,17 +10,177 @@
 	font-family: var(--lls-font, "Manrope", "Segoe UI", Arial, sans-serif);
 	font-size: clamp(0.9rem, 2.4vw, 1rem);
 	font-weight: 600;
-	color: #fff;
+	color: #fff !important;
 	line-height: 1.2;
 }
 
 .lls-shortcodes .lls-coin__label {
 	font-weight: 600;
-	color: #fff;
+	color: #fff !important;
 }
 
 .lls-shortcodes .lls-coin__value {
+	color: #fff !important;
 	font-variant-numeric: tabular-nums;
-	font-weight: 700;
+	font-weight: 800;
+	font-size: clamp(1.08rem, 2.85vw, 1.28rem);
 	letter-spacing: 0.02em;
+}
+
+.lls-shortcodes a.lls-coin--link,
+.lls-shortcodes a.lls-coin--link:visited {
+	color: #fff !important;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.lls-shortcodes a.lls-coin--link:hover,
+.lls-shortcodes a.lls-coin--link:focus-visible {
+	color: rgba(255, 255, 255, 0.95) !important;
+	text-decoration: underline;
+	text-underline-offset: 0.12em;
+}
+
+.lls-shortcodes a.lls-coin--link:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+}
+
+.lls-shortcodes a.lls-coin--link .lls-coin__live {
+	display: inline-flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	align-items: baseline;
+	gap: 0.35em;
+}
+
+/* Cronologia coin [lls_coin_history] */
+.lls-shortcodes .lls-coin-history__balance {
+	margin: 0 0 1rem;
+	font-size: 1rem;
+	font-weight: 700;
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-shortcodes .lls-coin-history__day-summary {
+	margin: 0 0 1.5rem;
+	padding: 0 0 1.25rem;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.lls-shortcodes .lls-coin-history__day-summary-title,
+.lls-shortcodes .lls-coin-history__list-title {
+	margin: 0 0 0.75rem;
+	font-size: 1rem;
+	font-weight: 700;
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-shortcodes .lls-coin-history__day-summary-list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.65rem;
+}
+
+.lls-shortcodes .lls-coin-history__day-summary-item {
+	margin: 0;
+	font-size: 0.95rem;
+	line-height: 1.5;
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-shortcodes .lls-coin-history--guest,
+.lls-shortcodes .lls-coin-history--empty {
+	margin: 0;
+	color: var(--lls-ink-soft, #4a4a4a);
+	line-height: 1.5;
+}
+
+.lls-shortcodes .lls-coin-history__list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 1.15rem;
+}
+
+.lls-shortcodes .lls-coin-history__item {
+	margin: 0;
+	padding: 0 0 1rem;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.lls-shortcodes .lls-coin-history__item:last-child {
+	padding-bottom: 0;
+	border-bottom: none;
+}
+
+.lls-shortcodes .lls-coin-history__item-top {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	flex-wrap: wrap;
+	margin-bottom: 0.35rem;
+}
+
+.lls-shortcodes .lls-coin-history__time {
+	font-size: 0.88rem;
+	color: var(--lls-ink-soft, #4a4a4a);
+	font-variant-numeric: tabular-nums;
+}
+
+.lls-shortcodes .lls-coin-history__calendar-day {
+	margin: 0 0 0.35rem;
+	font-size: 0.88rem;
+	color: var(--lls-ink-soft, #4a4a4a);
+	line-height: 1.4;
+}
+
+.lls-shortcodes .lls-coin-history__delta {
+	font-size: 0.95rem;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+}
+
+.lls-shortcodes .lls-coin-history__delta--credit {
+	color: #1e6b2e;
+}
+
+.lls-shortcodes .lls-coin-history__delta--debit {
+	color: #b32d2e;
+}
+
+.lls-shortcodes .lls-coin-history__detail {
+	margin: 0 0 0.35rem;
+	font-size: 0.95rem;
+	line-height: 1.45;
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-shortcodes .lls-coin-history__story-link {
+	font-weight: 600;
+	color: var(--lls-ink-soft, #4a4a4a);
+	text-decoration: underline;
+	text-underline-offset: 0.1em;
+}
+
+.lls-shortcodes .lls-coin-history__story-link:hover {
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-shortcodes .lls-coin-history__story-muted {
+	color: var(--lls-ink-soft, #4a4a4a);
+	font-style: italic;
+}
+
+.lls-shortcodes .lls-coin-history__after {
+	margin: 0;
+	font-size: 0.85rem;
+	color: var(--lls-ink-soft, #4a4a4a);
 }

@@ -16,6 +16,7 @@ require_once __DIR__ . '/includes/lls-header-shortcodes.php';
 require_once __DIR__ . '/includes/lls-app-logo-shortcodes.php';
 require_once __DIR__ . '/includes/lls-footer-app-nav-settings.php';
 require_once __DIR__ . '/includes/lls-footer-shortcodes.php';
+require_once __DIR__ . '/includes/lls-coin-economy.php';
 require_once __DIR__ . '/includes/lls-profile-shortcodes.php';
 require_once __DIR__ . '/includes/lls-coin-shortcodes.php';
 require_once __DIR__ . '/includes/lls-login-shortcodes.php';
@@ -908,6 +909,27 @@ class LLS_Plugin {
 						'ex'     => [ '[lls_profile_continue_stories]', '[lls_profile_continue_stories limit="5" words="30"]' ],
 					],
 					[
+						'tag'    => 'lls_completed_phrases',
+						'title'  => __( 'Cronologia frasi completate', 'language-learning-stories' ),
+						'intro'  => __( 'Lista: frase in inglese (traduzione) con pulsante ascolto (sintesi vocale), sotto in piccolo l’italiano; titolo storia con link, categorie e tag. Solo utenti connessi. Ordine dal più recente (timestamp interno). Limite voci: filtro lls_max_completed_phrases_log (predefinito 2000).', 'language-learning-stories' ),
+						'where'  => __( 'Pagina area personale o «Le mie frasi».', 'language-learning-stories' ),
+						'attrs'  => [
+							[
+								'name'     => 'limit',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'Intero 1–500. Predefinito: 200.', 'language-learning-stories' ),
+								'help'     => __( 'Quante righe mostrare (le più recenti per prime).', 'language-learning-stories' ),
+							],
+							[
+								'name'     => 'excerpt',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'Intero 0–400. Predefinito: 0 = testo intero.', 'language-learning-stories' ),
+								'help'     => __( 'Se > 0, tronca la frase a N caratteri.', 'language-learning-stories' ),
+							],
+						],
+						'ex'     => [ '[lls_completed_phrases]', '[lls_completed_phrases limit="50" excerpt="120"]' ],
+					],
+					[
 						'tag'    => 'lls_profile_account',
 						'title'  => __( 'Dati account', 'language-learning-stories' ),
 						'intro'  => __( 'Vista riepilogo con pulsante «Modifica»: nome accesso, nome visualizzato, email, lingua che conosci (select Italiano / Polacco / Spagnolo, salvata in user meta), password. La password in chiaro in vista è una copia salvata con wp_set_password (vedi filtro lls_store_plain_password_for_profile_display). Per leggere la lingua da codice: lls_get_user_known_lang().', 'language-learning-stories' ),
@@ -1314,6 +1336,8 @@ class LLS_Plugin {
 		if ( ! in_array( $known_lang, lls_known_lang_codes(), true ) ) {
 			$known_lang = 'it';
 		}
+		$coin_cost   = function_exists( 'lls_get_story_coin_cost' ) ? lls_get_story_coin_cost( $post->ID ) : 0;
+		$coin_reward = function_exists( 'lls_get_story_coin_reward' ) ? lls_get_story_coin_reward( $post->ID ) : 0;
 		?>
 		<div class="lls-story-info">
 			<p>
@@ -1349,6 +1373,19 @@ class LLS_Plugin {
 					</button>
 				</p>
 			</div>
+			<hr style="margin:1.25em 0;border:none;border-top:1px solid #c3c4c7;">
+			<p>
+				<label for="lls_story_coin_cost"><strong><?php esc_html_e( 'Costo sblocco (coin)', 'language-learning-stories' ); ?></strong></label><br>
+				<input type="number" name="lls_story_coin_cost" id="lls_story_coin_cost" value="<?php echo esc_attr( (string) $coin_cost ); ?>" min="0" step="1" class="small-text">
+				<br>
+				<small class="description"><?php esc_html_e( '0 = storia gratuita, subito accessibile. Valore maggiore 0 = l’utente deve spendere così tanti coin per sbloccarla dalla Libreria.', 'language-learning-stories' ); ?></small>
+			</p>
+			<p>
+				<label for="lls_story_coin_reward"><strong><?php esc_html_e( 'Ricompensa al completamento (coin)', 'language-learning-stories' ); ?></strong></label><br>
+				<input type="number" name="lls_story_coin_reward" id="lls_story_coin_reward" value="<?php echo esc_attr( (string) $coin_reward ); ?>" min="0" step="1" class="small-text">
+				<br>
+				<small class="description"><?php esc_html_e( 'Coin aggiunti una sola volta al saldo quando l’utente completa tutte le frasi della storia.', 'language-learning-stories' ); ?></small>
+			</p>
 		</div>
 		<?php
 	}
@@ -1513,6 +1550,15 @@ class LLS_Plugin {
 			$known_lang = 'it';
 		}
 		update_post_meta( $post_id, '_lls_known_lang', $known_lang );
+
+		$coin_cost = isset( $_POST['lls_story_coin_cost'] ) ? max( 0, (int) $_POST['lls_story_coin_cost'] ) : 0;
+		$coin_reward = isset( $_POST['lls_story_coin_reward'] ) ? max( 0, (int) $_POST['lls_story_coin_reward'] ) : 0;
+		if ( function_exists( 'lls_story_coin_cost_meta_key' ) ) {
+			update_post_meta( $post_id, lls_story_coin_cost_meta_key(), $coin_cost );
+		}
+		if ( function_exists( 'lls_story_coin_reward_meta_key' ) ) {
+			update_post_meta( $post_id, lls_story_coin_reward_meta_key(), $coin_reward );
+		}
 
 		$sentences_data = isset( $_POST['lls_sentences'] ) && is_array( $_POST['lls_sentences'] ) ? $_POST['lls_sentences'] : [];
 		$sentences      = [];
@@ -1719,20 +1765,33 @@ class LLS_Plugin {
 			);
 
 			$delta = $completed - $old_completed;
+			if ( $delta > 0 && function_exists( 'lls_log_completed_phrases_range' ) ) {
+				lls_log_completed_phrases_range( $user_id, $story_id, $old_completed, $completed );
+			}
 			if ( $delta > 0 && function_exists( 'lls_increment_user_daily_phrases' ) ) {
 				lls_increment_user_daily_phrases( $user_id, $delta );
+			}
+			if ( $delta > 0 && function_exists( 'lls_grant_coins_for_completed_phrases' ) ) {
+				lls_grant_coins_for_completed_phrases( $user_id, $story_id, $delta );
 			}
 			if ( function_exists( 'lls_touch_user_recent_story' ) ) {
 				lls_touch_user_recent_story( $user_id, $story_id );
 			}
-			if ( function_exists( 'lls_get_user_total_completed_sentences' ) ) {
-				$coin_total = lls_get_user_total_completed_sentences( $user_id );
+			$story_total = function_exists( 'lls_count_story_sentences' ) ? lls_count_story_sentences( $story_id ) : 0;
+			if ( function_exists( 'lls_maybe_grant_story_completion_reward' ) && $story_total > 0 ) {
+				lls_maybe_grant_story_completion_reward( $user_id, $story_id, $completed, $story_total );
+			}
+			if ( function_exists( 'lls_get_user_coin_balance' ) ) {
+				$coin_total = lls_get_user_coin_balance( $user_id );
 			}
 		}
 
 		$payload = [];
 		if ( null !== $coin_total ) {
 			$payload['coin_total'] = (int) $coin_total;
+		}
+		if ( is_user_logged_in() && function_exists( 'lls_get_user_total_completed_sentences' ) ) {
+			$payload['total_phrases'] = (int) lls_get_user_total_completed_sentences( get_current_user_id() );
 		}
 		wp_send_json_success( $payload );
 	}
@@ -1813,6 +1872,14 @@ class LLS_Plugin {
 		wp_register_script(
 			'lls-login-intro',
 			$plugin_url . 'assets/lls-login-intro.js',
+			[],
+			LLS_PLUGIN_VERSION,
+			true
+		);
+
+		wp_enqueue_script(
+			'lls-completed-phrases',
+			$plugin_url . 'assets/lls-completed-phrases.js',
 			[],
 			LLS_PLUGIN_VERSION,
 			true

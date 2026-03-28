@@ -870,8 +870,13 @@
 				story_text: state.storyHtml
 			}
 		}).done(function (resp) {
-			if (resp && resp.success && resp.data && typeof resp.data.coin_total === 'number') {
-				$('.lls-coin__value[data-lls-coin-value]').text(String(resp.data.coin_total));
+			if (resp && resp.success && resp.data) {
+				if (typeof resp.data.coin_total === 'number') {
+					$('.lls-coin__value[data-lls-coin-value]').text(String(resp.data.coin_total));
+				}
+				if (typeof resp.data.total_phrases === 'number') {
+					$('[data-lls-total-phrases]').text(String(resp.data.total_phrases));
+				}
 			}
 		});
 	}
