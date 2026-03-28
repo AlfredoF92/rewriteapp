@@ -130,6 +130,129 @@ function lls_get_story_summary_text( $post, $words = 40 ) {
 }
 
 /**
+ * Meta query: storie pubblicate per lingua interfaccia (_lls_known_lang).
+ * Per «it» include anche storie senza meta o vuote (comportamento legacy del plugin).
+ *
+ * @param string $lang Codice it|pl|es.
+ * @return array<int, array<string, mixed>>
+ */
+function lls_meta_query_stories_for_interface_lang( $lang ) {
+	if ( ! function_exists( 'lls_known_lang_codes' ) ) {
+		return [];
+	}
+	$lang = in_array( $lang, lls_known_lang_codes(), true ) ? $lang : 'it';
+	if ( 'it' === $lang ) {
+		$query = [
+			'relation' => 'OR',
+			[
+				'key'     => '_lls_known_lang',
+				'compare' => 'NOT EXISTS',
+			],
+			[
+				'key'     => '_lls_known_lang',
+				'value'   => '',
+				'compare' => '=',
+			],
+			[
+				'key'   => '_lls_known_lang',
+				'value' => 'it',
+			],
+		];
+	} else {
+		$query = [
+			[
+				'key'   => '_lls_known_lang',
+				'value' => $lang,
+			],
+		];
+	}
+	/**
+	 * Filtro: meta_query per elenco storie per lingua interfaccia (es. libreria).
+	 *
+	 * @param array  $query Meta query costruita.
+	 * @param string $lang  Codice lingua.
+	 */
+	return apply_filters( 'lls_meta_query_stories_for_interface_lang', $query, $lang );
+}
+
+/**
+ * HTML di un elemento elenco storia (stesso markup di [lls_profile_continue_stories]).
+ *
+ * @param WP_Post $post         Post storia.
+ * @param int     $words        Parole riassunto.
+ * @param int     $completed    Frasi completate.
+ * @param int     $total        Frasi totali.
+ * @param string  $button_label Testo pulsante (già tradotto).
+ * @return string
+ */
+function lls_get_profile_story_list_item_html( WP_Post $post, $words, $completed, $total, $button_label ) {
+	$words     = (int) $words;
+	$completed = max( 0, (int) $completed );
+	$total     = max( 0, (int) $total );
+	$pct       = $total > 0 ? (int) round( 100 * $completed / $total ) : 0;
+	$summary   = lls_get_story_summary_text( $post, $words );
+	$url       = get_permalink( $post );
+	$aria_pb   = sprintf(
+		/* translators: 1: completed, 2: total */
+		__( 'Progress: %1$d of %2$d sentences', 'language-learning-stories' ),
+		$completed,
+		$total
+	);
+	$cat_list = taxonomy_exists( 'lls_story_category' )
+		? get_the_term_list( $post->ID, 'lls_story_category', '', ', ', '' )
+		: '';
+	$tag_list = taxonomy_exists( 'lls_story_tag' )
+		? get_the_term_list( $post->ID, 'lls_story_tag', '', ', ', '' )
+		: '';
+	if ( is_wp_error( $cat_list ) || false === $cat_list ) {
+		$cat_list = '';
+	}
+	if ( is_wp_error( $tag_list ) || false === $tag_list ) {
+		$tag_list = '';
+	}
+
+	ob_start();
+	?>
+	<li class="lls-profile-continue__item">
+		<h3 class="lls-story-title">
+			<a href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( get_the_title( $post ) ); ?></a>
+		</h3>
+		<?php if ( $cat_list || $tag_list ) : ?>
+			<div class="lls-profile-continue__tax">
+				<?php if ( $cat_list ) : ?>
+					<p class="lls-profile-continue__terms lls-profile-continue__terms--categories">
+						<span class="lls-profile-continue__terms-label"><?php esc_html_e( 'Categories', 'language-learning-stories' ); ?></span>
+						<span class="lls-profile-continue__terms-list"><?php echo wp_kses_post( $cat_list ); ?></span>
+					</p>
+				<?php endif; ?>
+				<?php if ( $tag_list ) : ?>
+					<p class="lls-profile-continue__terms lls-profile-continue__terms--tags">
+						<span class="lls-profile-continue__terms-label"><?php esc_html_e( 'Tags', 'language-learning-stories' ); ?></span>
+						<span class="lls-profile-continue__terms-list"><?php echo wp_kses_post( $tag_list ); ?></span>
+					</p>
+				<?php endif; ?>
+			</div>
+		<?php endif; ?>
+		<?php if ( $summary !== '' ) : ?>
+			<p class="lls-profile-continue__summary"><?php echo esc_html( $summary ); ?></p>
+		<?php endif; ?>
+		<div class="lls-profile-continue__progress-stack">
+			<div class="lls-progress-bar-wrap" role="progressbar" aria-valuemin="0" aria-valuemax="<?php echo esc_attr( (string) $total ); ?>" aria-valuenow="<?php echo esc_attr( (string) $completed ); ?>" aria-label="<?php echo esc_attr( $aria_pb ); ?>">
+				<div class="lls-progress-bar" style="width: <?php echo esc_attr( (string) $pct ); ?>%;"></div>
+			</div>
+			<div class="lls-progress-row">
+				<span class="lls-progress-counter"><?php echo esc_html( sprintf( /* translators: 1: completed, 2: total */ __( '%1$d / %2$d sentences', 'language-learning-stories' ), $completed, $total ) ); ?></span>
+			</div>
+		</div>
+		<p class="lls-continua-wrap">
+			<a class="lls-btn lls-btn-continua" href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( $button_label ); ?></a>
+		</p>
+	</li>
+	<?php
+	return (string) ob_get_clean();
+}
+
+/**
  * Shortcode: saluto area personale.
  *
  * Uso: [lls_profile_greeting]
@@ -240,73 +363,117 @@ function lls_shortcode_profile_continue_stories( $atts ) {
 		return function_exists( 'lls_wrap_shortcode_html' ) ? lls_wrap_shortcode_html( $inner, 'block' ) : $inner;
 	}
 
+	$btn_continue = __( 'Continue story', 'language-learning-stories' );
 	ob_start();
 	echo '<div class="lls-profile-continue"><ul class="lls-profile-continue__list">';
 	foreach ( $items as $row ) {
-		$post      = $row['post'];
-		$completed = $row['completed'];
-		$total     = $row['total'];
-		$pct       = $total > 0 ? (int) round( 100 * $completed / $total ) : 0;
-		$summary   = lls_get_story_summary_text( $post, $words );
-		$url       = get_permalink( $post );
-		$aria_pb   = sprintf(
-			/* translators: 1: completed, 2: total */
-			__( 'Progress: %1$d of %2$d sentences', 'language-learning-stories' ),
-			$completed,
-			$total
+		echo lls_get_profile_story_list_item_html(
+			$row['post'],
+			$words,
+			$row['completed'],
+			$row['total'],
+			$btn_continue
 		);
-		$cat_list = taxonomy_exists( 'lls_story_category' )
-			? get_the_term_list( $post->ID, 'lls_story_category', '', ', ', '' )
-			: '';
-		$tag_list = taxonomy_exists( 'lls_story_tag' )
-			? get_the_term_list( $post->ID, 'lls_story_tag', '', ', ', '' )
-			: '';
-		if ( is_wp_error( $cat_list ) || false === $cat_list ) {
-			$cat_list = '';
-		}
-		if ( is_wp_error( $tag_list ) || false === $tag_list ) {
-			$tag_list = '';
-		}
-		?>
-		<li class="lls-profile-continue__item">
-			<h3 class="lls-story-title">
-				<a href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( get_the_title( $post ) ); ?></a>
-			</h3>
-			<?php if ( $cat_list || $tag_list ) : ?>
-				<div class="lls-profile-continue__tax">
-					<?php if ( $cat_list ) : ?>
-						<p class="lls-profile-continue__terms lls-profile-continue__terms--categories">
-							<span class="lls-profile-continue__terms-label"><?php esc_html_e( 'Categories', 'language-learning-stories' ); ?></span>
-							<span class="lls-profile-continue__terms-list"><?php echo wp_kses_post( $cat_list ); ?></span>
-						</p>
-					<?php endif; ?>
-					<?php if ( $tag_list ) : ?>
-						<p class="lls-profile-continue__terms lls-profile-continue__terms--tags">
-							<span class="lls-profile-continue__terms-label"><?php esc_html_e( 'Tags', 'language-learning-stories' ); ?></span>
-							<span class="lls-profile-continue__terms-list"><?php echo wp_kses_post( $tag_list ); ?></span>
-						</p>
-					<?php endif; ?>
-				</div>
-			<?php endif; ?>
-			<?php if ( $summary !== '' ) : ?>
-				<p class="lls-profile-continue__summary"><?php echo esc_html( $summary ); ?></p>
-			<?php endif; ?>
-			<div class="lls-profile-continue__progress-stack">
-				<div class="lls-progress-bar-wrap" role="progressbar" aria-valuemin="0" aria-valuemax="<?php echo esc_attr( (string) $total ); ?>" aria-valuenow="<?php echo esc_attr( (string) $completed ); ?>" aria-label="<?php echo esc_attr( $aria_pb ); ?>">
-					<div class="lls-progress-bar" style="width: <?php echo esc_attr( (string) $pct ); ?>%;"></div>
-				</div>
-				<div class="lls-progress-row">
-					<span class="lls-progress-counter"><?php echo esc_html( sprintf( /* translators: 1: completed, 2: total */ __( '%1$d / %2$d sentences', 'language-learning-stories' ), $completed, $total ) ); ?></span>
-				</div>
-			</div>
-			<p class="lls-continua-wrap">
-				<a class="lls-btn lls-btn-continua" href="<?php echo esc_url( $url ); ?>"><?php esc_html_e( 'Continue story', 'language-learning-stories' ); ?></a>
-			</p>
-		</li>
-		<?php
 	}
 	echo '</ul></div>';
 	$out = (string) ob_get_clean();
+	return function_exists( 'lls_wrap_shortcode_html' ) ? lls_wrap_shortcode_html( $out, 'block' ) : $out;
+}
+
+/**
+ * Shortcode: libreria — tutte le storie pubblicate per la lingua interfaccia scelta dall’utente (o attributo lang).
+ *
+ * Uso: [lls_library_stories limit="50" words="40"]
+ *
+ * @param string[]|string $atts Attributi shortcode.
+ * @return string
+ */
+function lls_shortcode_library_stories( $atts ) {
+	$atts = shortcode_atts(
+		[
+			'limit'     => '50',
+			'words'     => '40',
+			'lang'      => '',
+			'show_lang' => '1',
+		],
+		is_array( $atts ) ? $atts : [],
+		'lls_library_stories'
+	);
+
+	$limit = max( 1, min( 100, (int) $atts['limit'] ) );
+	$words = max( 5, min( 80, (int) $atts['words'] ) );
+
+	$lang = trim( (string) $atts['lang'] );
+	if ( $lang === '' ) {
+		$lang = function_exists( 'lls_get_user_known_lang' ) ? lls_get_user_known_lang() : 'it';
+	} elseif ( function_exists( 'lls_known_lang_codes' ) && ! in_array( $lang, lls_known_lang_codes(), true ) ) {
+		$lang = 'it';
+	}
+
+	$meta_query = lls_meta_query_stories_for_interface_lang( $lang );
+	$query_args = [
+		'post_type'              => 'lls_story',
+		'post_status'            => 'publish',
+		'posts_per_page'         => $limit,
+		'orderby'                => 'modified',
+		'order'                  => 'DESC',
+		'ignore_sticky_posts'    => true,
+		'no_found_rows'          => true,
+		'update_post_meta_cache' => true,
+		'update_post_term_cache' => true,
+	];
+	if ( ! empty( $meta_query ) ) {
+		$query_args['meta_query'] = $meta_query;
+	}
+
+	$q        = new WP_Query( $query_args );
+	$user_id  = is_user_logged_in() ? get_current_user_id() : 0;
+	$btn      = __( 'Continue story', 'language-learning-stories' );
+	$items_html = '';
+
+	if ( $q->have_posts() ) {
+		while ( $q->have_posts() ) {
+			$q->the_post();
+			$post = get_post();
+			if ( ! $post instanceof WP_Post ) {
+				continue;
+			}
+			$sentences = get_post_meta( $post->ID, '_lls_sentences', true );
+			$total     = is_array( $sentences ) ? count( $sentences ) : 0;
+			if ( $total < 1 ) {
+				continue;
+			}
+			$completed = 0;
+			if ( $user_id > 0 ) {
+				$saved = get_user_meta( $user_id, '_lls_progress_' . $post->ID, true );
+				if ( is_array( $saved ) && isset( $saved['completed'] ) ) {
+					$completed = (int) $saved['completed'];
+				}
+			}
+			$items_html .= lls_get_profile_story_list_item_html( $post, $words, $completed, $total, $btn );
+		}
+		wp_reset_postdata();
+	}
+
+	if ( $items_html === '' ) {
+		$inner = '<div class="lls-profile-continue lls-library-stories lls-library-stories--empty"><p>' .
+			esc_html__( 'No published stories match this interface language yet.', 'language-learning-stories' ) .
+			'</p></div>';
+		return function_exists( 'lls_wrap_shortcode_html' ) ? lls_wrap_shortcode_html( $inner, 'block' ) : $inner;
+	}
+
+	$intro = '';
+	if ( '1' === $atts['show_lang'] || 'true' === $atts['show_lang'] ) {
+		$labels = function_exists( 'lls_get_known_lang_choice_labels' ) ? lls_get_known_lang_choice_labels() : [];
+		$label  = isset( $labels[ $lang ] ) ? $labels[ $lang ] : $lang;
+		$intro  = '<p class="lls-library-stories__lang-note">' . sprintf(
+			/* translators: %s: language name, e.g. Italian */
+			esc_html__( 'Stories for: %s', 'language-learning-stories' ),
+			esc_html( $label )
+		) . '</p>';
+	}
+
+	$out = '<div class="lls-profile-continue lls-library-stories">' . $intro . '<ul class="lls-profile-continue__list">' . $items_html . '</ul></div>';
 	return function_exists( 'lls_wrap_shortcode_html' ) ? lls_wrap_shortcode_html( $out, 'block' ) : $out;
 }
 
@@ -608,6 +775,7 @@ add_action(
 	static function () {
 		add_shortcode( 'lls_profile_greeting', 'lls_shortcode_profile_greeting' );
 		add_shortcode( 'lls_profile_continue_stories', 'lls_shortcode_profile_continue_stories' );
+		add_shortcode( 'lls_library_stories', 'lls_shortcode_library_stories' );
 		add_shortcode( 'lls_profile_account', 'lls_shortcode_profile_account' );
 	},
 	12

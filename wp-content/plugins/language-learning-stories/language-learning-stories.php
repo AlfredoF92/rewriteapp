@@ -592,73 +592,124 @@ class LLS_Plugin {
 			wp_die( esc_html__( 'Permessi insufficienti.', 'language-learning-stories' ) );
 		}
 
-		$sections = [
+		$documentation_groups = [
 			[
-				'tag'    => 'lls_header_greeting',
-				'title'  => __( 'Saluto (header)', 'language-learning-stories' ),
-				'intro'  => __( 'Per utenti connessi mostra «Ciao, [nome].» come link verso l’area personale (predefinito: /area-personale/ rispetto alla home). Per ospiti: link al login. URL area: filtro lls_account_area_url o attributo path.', 'language-learning-stories' ),
-				'where'  => __( 'Adatto all’header o al top bar: inserisci lo shortcode nel contenuto di un blocco Shortcode, in un widget HTML o nel file del tema con do_shortcode().', 'language-learning-stories' ),
-				'attrs'  => [
+				'group_title' => __( 'Shortcode per intestazione (header)', 'language-learning-stories' ),
+				'group_intro' => __( 'Da usare nel tema o nel contenuto dell’header: saluto con link all’area personale e riepilogo giornaliero delle frasi completate.', 'language-learning-stories' ),
+				'sections'    => [
 					[
-						'name'     => 'path',
-						'required' => __( 'No', 'language-learning-stories' ),
-						'values'   => __( 'Slug percorso senza slash, es. area-personale. Se vuoto si usa /area-personale/ o il filtro lls_account_area_url.', 'language-learning-stories' ),
-						'help'     => __( 'Sovrascrive solo il percorso sotto la home (non l’URL completo).', 'language-learning-stories' ),
+						'tag'    => 'lls_header_greeting',
+						'title'  => __( 'Saluto (header)', 'language-learning-stories' ),
+						'intro'  => __( 'Per utenti connessi mostra «Ciao, [nome].» come link verso l’area personale (predefinito: /area-personale/ rispetto alla home). Per ospiti: link al login. URL area: filtro lls_account_area_url o attributo path.', 'language-learning-stories' ),
+						'where'  => __( 'Adatto all’header o al top bar: inserisci lo shortcode nel contenuto di un blocco Shortcode, in un widget HTML o nel file del tema con do_shortcode().', 'language-learning-stories' ),
+						'attrs'  => [
+							[
+								'name'     => 'path',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'Slug percorso senza slash, es. area-personale. Se vuoto si usa /area-personale/ o il filtro lls_account_area_url.', 'language-learning-stories' ),
+								'help'     => __( 'Sovrascrive solo il percorso sotto la home (non l’URL completo).', 'language-learning-stories' ),
+							],
+						],
+						'ex'     => [ '[lls_header_greeting]', '[lls_header_greeting path="area-personale"]' ],
+					],
+					[
+						'tag'    => 'lls_header_daily_phrases',
+						'title'  => __( 'Frasi completate ultimi 7 giorni (header)', 'language-learning-stories' ),
+						'intro'  => __( 'Mostra sette caselle (un giorno ciascuna) con il numero di frasi completate in quel giorno per l’utente collegato. Per gli ospiti i valori sono zero. I dati si aggiornano quando il progresso viene salvato dalle storie.', 'language-learning-stories' ),
+						'where'  => __( 'Stesso contesto del saluto header.', 'language-learning-stories' ),
+						'attrs'  => [],
+						'ex'     => [ '[lls_header_daily_phrases]' ],
 					],
 				],
-				'ex'     => [ '[lls_header_greeting]', '[lls_header_greeting path="area-personale"]' ],
 			],
 			[
-				'tag'    => 'lls_header_daily_phrases',
-				'title'  => __( 'Frasi completate ultimi 7 giorni (header)', 'language-learning-stories' ),
-				'intro'  => __( 'Mostra sette caselle (un giorno ciascuna) con il numero di frasi completate in quel giorno per l’utente collegato. Per gli ospiti i valori sono zero. I dati si aggiornano quando il progresso viene salvato dalle storie.', 'language-learning-stories' ),
-				'where'  => __( 'Stesso contesto del saluto header.', 'language-learning-stories' ),
-				'attrs'  => [],
-				'ex'     => [ '[lls_header_daily_phrases]' ],
-			],
-			[
-				'tag'    => 'lls_profile_greeting',
-				'title'  => __( 'Saluto area personale', 'language-learning-stories' ),
-				'intro'  => __( 'Versione per pagine «Area personale»: saluto con nome; per ospiti messaggio e link «Accedi». Opzionalmente puoi mostrare il link per uscire dall’account.', 'language-learning-stories' ),
-				'where'  => __( 'Pagina dedicata al profilo o dashboard utente.', 'language-learning-stories' ),
-				'attrs'  => [
+				'group_title' => __( 'Shortcode per libreria', 'language-learning-stories' ),
+				'group_intro' => __( 'Pagina dove l’utente sfoglia tutte le storie disponibili nella sua lingua interfaccia (meta _lls_known_lang allineata al profilo o all’attributo lang).', 'language-learning-stories' ),
+				'sections'    => [
 					[
-						'name'     => 'logout',
-						'required' => __( 'No', 'language-learning-stories' ),
-						'values'   => '0 (predefinito), 1 oppure true',
-						'help'     => __( 'Se impostato a 1 o true, sotto al saluto viene aggiunto il link «Esci» (logout) con ritorno alla pagina corrente.', 'language-learning-stories' ),
+						'tag'    => 'lls_library_stories',
+						'title'  => __( 'Elenco storie (lingua interfaccia)', 'language-learning-stories' ),
+						'intro'  => __( 'Elenco delle storie pubblicate il cui _lls_known_lang coincide con la «lingua che conosci» del profilo (funzione lls_get_user_known_lang): per ospiti si assume italiano. Include anche storie senza meta o con valore vuoto se la lingua è italiano (come nel resto del plugin). Stesso layout di [lls_profile_continue_stories]: titolo, categorie e tag, trama, barra progresso se l’utente è connesso, pulsante «Continue story». Ordine: ultima modifica decrescente. Filtro opzionale: lls_meta_query_stories_for_interface_lang.', 'language-learning-stories' ),
+						'where'  => __( 'Pagina dedicata alla libreria (es. slug /libreria/) o qualsiasi contenuto dove vuoi l’elenco completo filtrato per lingua.', 'language-learning-stories' ),
+						'attrs'  => [
+							[
+								'name'     => 'limit',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'Intero 1–100. Predefinito: 50.', 'language-learning-stories' ),
+								'help'     => __( 'Numero massimo di storie nella pagina.', 'language-learning-stories' ),
+							],
+							[
+								'name'     => 'words',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'Intero 5–80. Predefinito: 40.', 'language-learning-stories' ),
+								'help'     => __( 'Lunghezza trama in parole.', 'language-learning-stories' ),
+							],
+							[
+								'name'     => 'lang',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => 'it, pl, es',
+								'help'     => __( 'Forza una lingua invece di usare il profilo. Vuoto = profilo (o it per ospiti).', 'language-learning-stories' ),
+							],
+							[
+								'name'     => 'show_lang',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => '1 (predefinito), 0 o false per nascondere la riga «Stories for: …».',
+								'help'     => __( 'Mostra sopra l’elenco la lingua usata per il filtro.', 'language-learning-stories' ),
+							],
+						],
+						'ex'     => [ '[lls_library_stories]', '[lls_library_stories limit="5" words="30"]', '[lls_library_stories limit="30" words="30" show_lang="0"]' ],
 					],
 				],
-				'ex'     => [ '[lls_profile_greeting]', '[lls_profile_greeting logout="1"]' ],
 			],
 			[
-				'tag'    => 'lls_profile_continue_stories',
-				'title'  => __( 'Storie in corso (area personale)', 'language-learning-stories' ),
-				'intro'  => __( 'Elenco delle storie che l’utente ha iniziato ma non completato: titolo con link, categorie e tag (tassonomie lls_story_category e lls_story_tag, con link agli archivi), trama (estratto o inizio contenuto), barra di avanzamento frasi completate / totali e pulsante «Continua la storia». Ordine: ultime storie con salvataggio progresso, poi le altre. Le storie completate al 100% non compaiono.', 'language-learning-stories' ),
-				'where'  => __( 'Pagina area personale insieme al saluto profilo.', 'language-learning-stories' ),
-				'attrs'  => [
+				'group_title' => __( 'Shortcode per area utente (personale)', 'language-learning-stories' ),
+				'group_intro' => __( 'Da usare sulla pagina area personale (es. /area-personale/): saluto, storie in corso, modifica account. Richiedono in genere utente connesso, salvo i messaggi per ospiti dove indicato.', 'language-learning-stories' ),
+				'sections'    => [
 					[
-						'name'     => 'limit',
-						'required' => __( 'No', 'language-learning-stories' ),
-						'values'   => __( 'Numero intero da 1 a 50. Predefinito: 10.', 'language-learning-stories' ),
-						'help'     => __( 'Quante storie mostrare al massimo.', 'language-learning-stories' ),
+						'tag'    => 'lls_profile_greeting',
+						'title'  => __( 'Saluto area personale', 'language-learning-stories' ),
+						'intro'  => __( 'Versione per pagine «Area personale»: saluto con nome; per ospiti messaggio e link «Accedi». Opzionalmente puoi mostrare il link per uscire dall’account.', 'language-learning-stories' ),
+						'where'  => __( 'Pagina dedicata al profilo o dashboard utente.', 'language-learning-stories' ),
+						'attrs'  => [
+							[
+								'name'     => 'logout',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => '0 (predefinito), 1 oppure true',
+								'help'     => __( 'Se impostato a 1 o true, sotto al saluto viene aggiunto il link «Esci» (logout) con ritorno alla pagina corrente.', 'language-learning-stories' ),
+							],
+						],
+						'ex'     => [ '[lls_profile_greeting]', '[lls_profile_greeting logout="1"]' ],
 					],
 					[
-						'name'     => 'words',
-						'required' => __( 'No', 'language-learning-stories' ),
-						'values'   => __( 'Numero intero da 5 a 80. Predefinito: 40.', 'language-learning-stories' ),
-						'help'     => __( 'Lunghezza della trama in parole (estratto o contenuto tagliato).', 'language-learning-stories' ),
+						'tag'    => 'lls_profile_continue_stories',
+						'title'  => __( 'Storie in corso', 'language-learning-stories' ),
+						'intro'  => __( 'Elenco delle storie che l’utente ha iniziato ma non completato: titolo con link, categorie e tag (tassonomie lls_story_category e lls_story_tag, con link agli archivi), trama (estratto o inizio contenuto), barra di avanzamento frasi completate / totali e pulsante «Continue story». Ordine: ultime storie con salvataggio progresso, poi le altre. Le storie completate al 100% non compaiono.', 'language-learning-stories' ),
+						'where'  => __( 'Pagina area personale insieme al saluto profilo.', 'language-learning-stories' ),
+						'attrs'  => [
+							[
+								'name'     => 'limit',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'Numero intero da 1 a 50. Predefinito: 10.', 'language-learning-stories' ),
+								'help'     => __( 'Quante storie mostrare al massimo.', 'language-learning-stories' ),
+							],
+							[
+								'name'     => 'words',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'Numero intero da 5 a 80. Predefinito: 40.', 'language-learning-stories' ),
+								'help'     => __( 'Lunghezza della trama in parole (estratto o contenuto tagliato).', 'language-learning-stories' ),
+							],
+						],
+						'ex'     => [ '[lls_profile_continue_stories]', '[lls_profile_continue_stories limit="5" words="30"]' ],
+					],
+					[
+						'tag'    => 'lls_profile_account',
+						'title'  => __( 'Dati account', 'language-learning-stories' ),
+						'intro'  => __( 'Vista riepilogo con pulsante «Modifica»: nome accesso, nome visualizzato, email, lingua che conosci (select Italiano / Polacco / Spagnolo, salvata in user meta), password. La password in chiaro in vista è una copia salvata con wp_set_password (vedi filtro lls_store_plain_password_for_profile_display). Per leggere la lingua da codice: lls_get_user_known_lang().', 'language-learning-stories' ),
+						'where'  => __( 'Pagina area personale accanto agli altri shortcode profilo.', 'language-learning-stories' ),
+						'attrs'  => [],
+						'ex'     => [ '[lls_profile_account]' ],
 					],
 				],
-				'ex'     => [ '[lls_profile_continue_stories]', '[lls_profile_continue_stories limit="5" words="30"]' ],
-			],
-			[
-				'tag'    => 'lls_profile_account',
-				'title'  => __( 'Dati account (area personale)', 'language-learning-stories' ),
-				'intro'  => __( 'Vista riepilogo con pulsante «Modifica»: nome accesso, nome visualizzato, email, lingua che conosci (select Italiano / Polacco / Spagnolo, salvata in user meta), password. La password in chiaro in vista è una copia salvata con wp_set_password (vedi filtro lls_store_plain_password_for_profile_display). Per leggere la lingua da codice: lls_get_user_known_lang().', 'language-learning-stories' ),
-				'where'  => __( 'Pagina area personale accanto agli altri shortcode profilo.', 'language-learning-stories' ),
-				'attrs'  => [],
-				'ex'     => [ '[lls_profile_account]' ],
 			],
 		];
 
@@ -666,7 +717,7 @@ class LLS_Plugin {
 		<div class="wrap lls-documentation-wrap">
 			<h1><?php esc_html_e( 'Documentazione shortcode', 'language-learning-stories' ); ?></h1>
 			<p class="description">
-				<?php esc_html_e( 'Shortcode del plugin Language Learning Stories. Incollali nel contenuto di una pagina (blocco Shortcode), in un widget o nel tema; WordPress deve elaborarli (il tema elabora di solito il contenuto delle pagine automaticamente).', 'language-learning-stories' ); ?>
+				<?php esc_html_e( 'Shortcode del plugin Language Learning Stories, raggruppati per tipo di pagina (intestazione, libreria, area utente). Incollali nel contenuto di una pagina (blocco Shortcode), in un widget o nel tema; WordPress deve elaborarli (il tema elabora di solito il contenuto delle pagine automaticamente).', 'language-learning-stories' ); ?>
 			</p>
 			<style>
 				.lls-documentation-wrap .lls-doc-code {
@@ -684,50 +735,83 @@ class LLS_Plugin {
 				.lls-documentation-wrap table.lls-doc-attrs th {
 					text-align: left;
 				}
+				.lls-documentation-wrap .lls-doc-group {
+					margin-top: 2.25rem;
+					padding-top: 0.25rem;
+					border-top: 1px solid #c3c4c7;
+				}
+				.lls-documentation-wrap .lls-doc-group:first-of-type {
+					margin-top: 1.25rem;
+					border-top: none;
+					padding-top: 0;
+				}
+				.lls-documentation-wrap .lls-doc-group__title {
+					margin: 0 0 0.35rem;
+					font-size: 1.15em;
+				}
+				.lls-documentation-wrap .lls-doc-group__intro {
+					margin: 0 0 1rem;
+					color: #646970;
+					max-width: 920px;
+				}
 			</style>
 
-			<?php foreach ( $sections as $sec ) : ?>
-				<div class="postbox lls-doc-section" style="margin-top:18px;padding:16px 20px;">
-					<h2 style="margin-top:0;">
-						<code>[<?php echo esc_html( $sec['tag'] ); ?>]</code>
-						— <?php echo esc_html( $sec['title'] ); ?>
+			<?php foreach ( $documentation_groups as $lls_doc_group_index => $group ) : ?>
+				<?php
+				$lls_doc_group_id = 'lls-doc-group-' . (int) $lls_doc_group_index;
+				?>
+				<section class="lls-doc-group" aria-labelledby="<?php echo esc_attr( $lls_doc_group_id ); ?>">
+					<h2 class="lls-doc-group__title" id="<?php echo esc_attr( $lls_doc_group_id ); ?>">
+						<?php echo esc_html( $group['group_title'] ); ?>
 					</h2>
-					<p><?php echo esc_html( $sec['intro'] ); ?></p>
-					<?php if ( ! empty( $sec['where'] ) ) : ?>
-						<p class="description"><?php echo esc_html( $sec['where'] ); ?></p>
+					<?php if ( ! empty( $group['group_intro'] ) ) : ?>
+						<p class="lls-doc-group__intro"><?php echo esc_html( $group['group_intro'] ); ?></p>
 					<?php endif; ?>
 
-					<h3 style="font-size:14px;margin:1.25em 0 0.5em;"><?php esc_html_e( 'Campi / attributi', 'language-learning-stories' ); ?></h3>
-					<?php if ( empty( $sec['attrs'] ) ) : ?>
-						<p><em><?php esc_html_e( 'Nessun attributo: usa solo il tag così com’è.', 'language-learning-stories' ); ?></em></p>
-					<?php else : ?>
-						<table class="widefat striped lls-doc-attrs" style="max-width:920px;">
-							<thead>
-								<tr>
-									<th scope="col"><?php esc_html_e( 'Nome', 'language-learning-stories' ); ?></th>
-									<th scope="col"><?php esc_html_e( 'Obbligatorio', 'language-learning-stories' ); ?></th>
-									<th scope="col"><?php esc_html_e( 'Valori', 'language-learning-stories' ); ?></th>
-									<th scope="col"><?php esc_html_e( 'Descrizione', 'language-learning-stories' ); ?></th>
-								</tr>
-							</thead>
-							<tbody>
-								<?php foreach ( $sec['attrs'] as $row ) : ?>
-									<tr>
-										<td><code><?php echo esc_html( $row['name'] ); ?></code></td>
-										<td><?php echo esc_html( $row['required'] ); ?></td>
-										<td><?php echo esc_html( $row['values'] ); ?></td>
-										<td><?php echo esc_html( $row['help'] ); ?></td>
-									</tr>
-								<?php endforeach; ?>
-							</tbody>
-						</table>
-					<?php endif; ?>
+					<?php foreach ( $group['sections'] as $sec ) : ?>
+						<div class="postbox lls-doc-section" style="margin-top:18px;padding:16px 20px;">
+							<h3 style="margin-top:0;font-size:1.1em;">
+								<code>[<?php echo esc_html( $sec['tag'] ); ?>]</code>
+								— <?php echo esc_html( $sec['title'] ); ?>
+							</h3>
+							<p><?php echo esc_html( $sec['intro'] ); ?></p>
+							<?php if ( ! empty( $sec['where'] ) ) : ?>
+								<p class="description"><?php echo esc_html( $sec['where'] ); ?></p>
+							<?php endif; ?>
 
-					<h3 style="font-size:14px;margin:1.25em 0 0.5em;"><?php esc_html_e( 'Esempi', 'language-learning-stories' ); ?></h3>
-					<?php foreach ( $sec['ex'] as $example ) : ?>
-						<pre class="lls-doc-code"><?php echo esc_html( $example ); ?></pre>
+							<h4 style="font-size:14px;margin:1.25em 0 0.5em;"><?php esc_html_e( 'Campi / attributi', 'language-learning-stories' ); ?></h4>
+							<?php if ( empty( $sec['attrs'] ) ) : ?>
+								<p><em><?php esc_html_e( 'Nessun attributo: usa solo il tag così com’è.', 'language-learning-stories' ); ?></em></p>
+							<?php else : ?>
+								<table class="widefat striped lls-doc-attrs" style="max-width:920px;">
+									<thead>
+										<tr>
+											<th scope="col"><?php esc_html_e( 'Nome', 'language-learning-stories' ); ?></th>
+											<th scope="col"><?php esc_html_e( 'Obbligatorio', 'language-learning-stories' ); ?></th>
+											<th scope="col"><?php esc_html_e( 'Valori', 'language-learning-stories' ); ?></th>
+											<th scope="col"><?php esc_html_e( 'Descrizione', 'language-learning-stories' ); ?></th>
+										</tr>
+									</thead>
+									<tbody>
+										<?php foreach ( $sec['attrs'] as $row ) : ?>
+											<tr>
+												<td><code><?php echo esc_html( $row['name'] ); ?></code></td>
+												<td><?php echo esc_html( $row['required'] ); ?></td>
+												<td><?php echo esc_html( is_string( $row['values'] ) ? $row['values'] : '' ); ?></td>
+												<td><?php echo esc_html( isset( $row['help'] ) ? $row['help'] : '' ); ?></td>
+											</tr>
+										<?php endforeach; ?>
+									</tbody>
+								</table>
+							<?php endif; ?>
+
+							<h4 style="font-size:14px;margin:1.25em 0 0.5em;"><?php esc_html_e( 'Esempi', 'language-learning-stories' ); ?></h4>
+							<?php foreach ( $sec['ex'] as $example ) : ?>
+								<pre class="lls-doc-code"><?php echo esc_html( $example ); ?></pre>
+							<?php endforeach; ?>
+						</div>
 					<?php endforeach; ?>
-				</div>
+				</section>
 			<?php endforeach; ?>
 		</div>
 		<?php
