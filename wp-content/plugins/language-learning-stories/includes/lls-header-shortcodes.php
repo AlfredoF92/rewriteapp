@@ -10,6 +10,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
+ * Avvolge l’output shortcode nel contenitore con variabili CSS coerenti con la storia.
+ *
+ * @param string $inner_html HTML interno.
+ * @param string $mode       'block' | 'contents' (display:contents per saluti inline nell’header).
+ * @return string
+ */
+function lls_wrap_shortcode_html( $inner_html, $mode = 'block' ) {
+	$class = 'lls-shortcodes';
+	if ( 'contents' === $mode ) {
+		$class .= ' lls-shortcodes--contents';
+	}
+	return '<div class="' . esc_attr( $class ) . '">' . $inner_html . '</div>';
+}
+
+/**
  * Chiave user meta: array associativo data Y-m-d => numero frasi completate quel giorno.
  */
 function lls_daily_phrases_meta_key() {
@@ -79,29 +94,74 @@ function lls_get_user_daily_phrases_last_7_days( $user_id ) {
 }
 
 /**
+ * URL della pagina area personale (saluto header → link per utenti connessi).
+ *
+ * Predefinito: /area-personale/ rispetto a home. Sovrascrivi con il filtro `lls_account_area_url`.
+ *
+ * @param string $path_override Percorso relativo opzionale (es. `area-personale` o `mio-account`), senza slash iniziale/finale.
+ * @return string URL assoluto.
+ */
+function lls_get_account_area_url( $path_override = '' ) {
+	if ( $path_override !== '' ) {
+		$slug = trim( (string) $path_override, '/' );
+		if ( $slug !== '' ) {
+			return home_url( '/' . $slug . '/' );
+		}
+	}
+	/**
+	 * Filtro: URL completo dell’area personale.
+	 *
+	 * @param string $url Predefinito home_url( '/area-personale/' ).
+	 */
+	return (string) apply_filters( 'lls_account_area_url', home_url( '/area-personale/' ) );
+}
+
+/**
  * Shortcode: saluto o invito al login.
  *
- * Uso: [lls_header_greeting]
+ * Uso: [lls_header_greeting] oppure [lls_header_greeting path="area-personale"]
  *
+ * @param string[]|string $atts Attributi shortcode.
  * @return string
  */
-function lls_shortcode_header_greeting() {
+function lls_shortcode_header_greeting( $atts = [] ) {
+	$atts = shortcode_atts(
+		[
+			'path' => '',
+		],
+		is_array( $atts ) ? $atts : [],
+		'lls_header_greeting'
+	);
+
 	if ( is_user_logged_in() ) {
-		$user = wp_get_current_user();
-		$name = $user->display_name ? $user->display_name : $user->user_login;
-		return '<span class="lls-sc-greeting">' . sprintf(
+		$user         = wp_get_current_user();
+		$name         = $user->display_name ? $user->display_name : $user->user_login;
+		$account_url  = lls_get_account_area_url( $atts['path'] );
+		$greeting_txt = sprintf(
 			/* translators: %s: display name */
 			esc_html__( 'Ciao, %s.', 'language-learning-stories' ),
 			esc_html( $name )
-		) . '</span>';
+		);
+		$aria_label = esc_attr(
+			sprintf(
+				/* translators: %s: destination, e.g. "Account area" */
+				__( 'Go to %s', 'language-learning-stories' ),
+				__( 'account area', 'language-learning-stories' )
+			)
+		);
+		$inner = '<a class="lls-sc-greeting lls-sc-greeting--link" href="' . esc_url( $account_url ) . '" aria-label="' . $aria_label . '">' . $greeting_txt . '</a>';
+		return lls_wrap_shortcode_html( $inner, 'contents' );
 	}
 
 	$login_url = wp_login_url( get_permalink() ?: home_url( '/' ) );
-	return '<span class="lls-sc-greeting lls-sc-greeting--guest">' . sprintf(
-		'<a href="%1$s">%2$s</a>',
-		esc_url( $login_url ),
-		esc_html__( 'Fai il login', 'language-learning-stories' )
-	) . '</span>';
+	return lls_wrap_shortcode_html(
+		'<span class="lls-sc-greeting lls-sc-greeting--guest">' . sprintf(
+			'<a href="%1$s">%2$s</a>',
+			esc_url( $login_url ),
+			esc_html__( 'Fai il login', 'language-learning-stories' )
+		) . '</span>',
+		'contents'
+	);
 }
 
 /**
@@ -130,7 +190,7 @@ function lls_shortcode_header_daily_phrases() {
 		);
 	}
 
-	return '<div class="lls-sc-week">' . $days_html . '</div>';
+	return lls_wrap_shortcode_html( '<div class="lls-sc-week">' . $days_html . '</div>', 'block' );
 }
 
 add_action(

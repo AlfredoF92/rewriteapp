@@ -1,0 +1,164 @@
+/**
+ * Shortcode LLS: stessi colori, font e componenti della pagina storia (.lls-story-page).
+ * Tutto è sotto .lls-shortcodes (o .lls-shortcodes--contents per non rompere layout inline).
+ */
+
+.lls-shortcodes {
+	--lls-ink: #2c2c2c;
+	--lls-ink-soft: #4a4a4a;
+	--lls-paper: #faf8f5;
+	--lls-paper-alt: #f5f2ed;
+	--lls-font: "Manrope", "Segoe UI", Arial, sans-serif;
+	box-sizing: border-box;
+	font-family: var(--lls-font);
+	font-weight: 300;
+	font-size: clamp(1rem, 2.8vw, 1.0625rem);
+	line-height: 1.7;
+	color: var(--lls-ink);
+}
+
+.lls-shortcodes--contents {
+	display: contents;
+}
+
+.lls-shortcodes *,
+.lls-shortcodes *::before,
+.lls-shortcodes *::after {
+	box-sizing: border-box;
+}
+
+.lls-shortcodes h1,
+.lls-shortcodes h2,
+.lls-shortcodes h3,
+.lls-shortcodes h4 {
+	font-family: var(--lls-font);
+	font-weight: 600;
+	color: var(--lls-ink);
+}
+
+/* Titolo come in storia (.lls-story-title) */
+.lls-shortcodes .lls-story-title {
+	margin: 0 0 0.35em;
+	font-size: 1.65rem;
+	font-weight: 600;
+	line-height: 1.25;
+	color: var(--lls-ink);
+}
+
+.lls-shortcodes .lls-story-title a {
+	color: inherit;
+	text-decoration: none;
+}
+
+.lls-shortcodes .lls-story-title a:hover {
+	text-decoration: underline;
+	opacity: 0.9;
+}
+
+/* Pulsanti = .lls-btn + .lls-btn-continua (storia) */
+.lls-shortcodes .lls-btn {
+	display: inline-block;
+	padding: 0.5em 1.25em;
+	border: none;
+	background: var(--lls-ink);
+	color: var(--lls-paper);
+	font-family: var(--lls-font);
+	font-size: 1rem;
+	font-weight: 300;
+	cursor: pointer;
+	text-decoration: none;
+	line-height: 1.4;
+	transition: opacity 0.3s ease, background 0.2s ease;
+}
+
+.lls-shortcodes a.lls-btn,
+.lls-shortcodes a.lls-btn:visited {
+	color: var(--lls-paper);
+}
+
+.lls-shortcodes .lls-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.lls-shortcodes .lls-btn-continua {
+	padding: 0.3em 0.6em;
+	font-size: 0.8rem;
+}
+
+.lls-shortcodes .lls-btn:not(:disabled):hover,
+.lls-shortcodes a.lls-btn:hover {
+	opacity: 0.88;
+	color: var(--lls-paper);
+}
+
+.lls-shortcodes .lls-continua-wrap {
+	margin-top: 0.85em;
+	margin-bottom: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.45em;
+}
+
+/* Barra progresso = header storia */
+.lls-shortcodes .lls-progress-label {
+	font-size: 0.9rem;
+	color: var(--lls-ink-soft);
+	margin-bottom: 0.25em;
+}
+
+.lls-shortcodes .lls-progress-bar-wrap {
+	height: 6px;
+	background: var(--lls-paper-alt);
+	overflow: hidden;
+	margin-bottom: 0.35em;
+}
+
+.lls-shortcodes .lls-progress-bar {
+	height: 100%;
+	background: var(--lls-ink-soft);
+	transition: width 0.4s ease;
+}
+
+.lls-shortcodes .lls-progress-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1em;
+	flex-wrap: wrap;
+}
+
+.lls-shortcodes .lls-progress-counter {
+	font-size: 0.9rem;
+	color: var(--lls-ink-soft);
+}
+
+.lls-shortcodes .lls-profile-continue__progress-stack {
+	margin-bottom: 0.85em;
+}
+
+/* Saluto profilo */
+.lls-shortcodes .lls-profile-greeting__hello {
+	margin: 0 0 0.35rem;
+	font-size: 6.65rem;
+	font-weight: 600;
+	line-height: 1.25;
+	color: var(--lls-ink);
+	font-family: var(--lls-font);
+}
+
+.lls-shortcodes .lls-profile-greeting__logout {
+	margin: 0;
+	font-size: 0.9rem;
+}
+
+/* Link testo (login, esci, ecc.) coerenti col tema libro */
+.lls-shortcodes a:not(.lls-btn) {
+	color: var(--lls-ink-soft);
+	text-decoration: underline;
+}
+
+.lls-shortcodes a:not(.lls-btn):hover {
+	color: var(--lls-ink);
+}

@@ -13,6 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once __DIR__ . '/includes/lls-ui-strings.php';
 require_once __DIR__ . '/includes/lls-header-shortcodes.php';
+require_once __DIR__ . '/includes/lls-profile-shortcodes.php';
 
 define( 'LLS_PLUGIN_VERSION', '0.2.1' );
 
@@ -38,9 +39,11 @@ class LLS_Plugin {
 		add_action( 'admin_menu', [ $this, 'add_story_lang_submenus' ], 11 );
 		add_action( 'admin_menu', [ $this, 'mark_story_lang_submenu_classes' ], 999 );
 		add_action( 'admin_menu', [ $this, 'add_translations_submenu' ], 25 );
+		add_action( 'admin_menu', [ $this, 'add_documentation_submenu' ], 26 );
 		add_filter( 'submenu_file', [ $this, 'submenu_file_for_lls_lang_list' ], 10, 2 );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_menu_lang_style' ] );
 		add_action( 'admin_post_lls_save_ui_strings', [ $this, 'handle_save_ui_strings' ] );
+		add_action( 'admin_post_lls_update_user_profile', [ $this, 'handle_update_user_profile' ] );
 
 		add_filter( 'manage_lls_story_posts_columns', [ $this, 'story_list_columns' ] );
 		add_action( 'manage_lls_story_posts_custom_column', [ $this, 'story_list_column_content' ], 10, 2 );
@@ -353,6 +356,20 @@ class LLS_Plugin {
 	}
 
 	/**
+	 * Pagina Documentazione: shortcode del plugin con spiegazioni e attributi.
+	 */
+	public function add_documentation_submenu() {
+		add_submenu_page(
+			'edit.php?post_type=lls_story',
+			__( 'Documentazione shortcode', 'language-learning-stories' ),
+			__( 'Documentazione', 'language-learning-stories' ),
+			'edit_posts',
+			'lls-documentation',
+			[ $this, 'render_documentation_page' ]
+		);
+	}
+
+	/**
 	 * Salva opzione lls_ui_strings dal form Traduzioni.
 	 */
 	public function handle_save_ui_strings() {
@@ -367,6 +384,110 @@ class LLS_Plugin {
 			$redirect = admin_url( 'edit.php?post_type=lls_story&page=lls-translations' );
 		}
 		wp_safe_redirect( add_query_arg( 'lls_ui_saved', '1', $redirect ) );
+		exit;
+	}
+
+	/**
+	 * Salva da front-end nome visualizzato, email e (opzionale) nuova password dell’utente collegato.
+	 */
+	public function handle_update_user_profile() {
+		if ( ! is_user_logged_in() ) {
+			wp_die( esc_html__( 'You must be logged in.', 'language-learning-stories' ) );
+		}
+
+		$user_id = get_current_user_id();
+		$referer = isset( $_POST['_wp_http_referer'] ) ? wp_unslash( $_POST['_wp_http_referer'] ) : '';
+		$redirect = $referer ? wp_validate_redirect( esc_url_raw( $referer ), home_url( '/' ) ) : home_url( '/' );
+		$redirect = remove_query_arg( 'lls_account', $redirect );
+
+		$nonce = isset( $_POST['lls_profile_nonce'] ) ? wp_unslash( $_POST['lls_profile_nonce'] ) : '';
+		if ( ! wp_verify_nonce( $nonce, 'lls_update_user_profile' ) ) {
+			wp_safe_redirect( add_query_arg( 'lls_account', 'err_nonce', $redirect ) );
+			exit;
+		}
+
+		$display_name = isset( $_POST['lls_display_name'] ) ? sanitize_text_field( wp_unslash( $_POST['lls_display_name'] ) ) : '';
+		$email        = isset( $_POST['lls_user_email'] ) ? sanitize_email( wp_unslash( $_POST['lls_user_email'] ) ) : '';
+		$pass1        = isset( $_POST['lls_pass1'] ) ? (string) wp_unslash( $_POST['lls_pass1'] ) : '';
+		$pass2        = isset( $_POST['lls_pass2'] ) ? (string) wp_unslash( $_POST['lls_pass2'] ) : '';
+		$new_login    = isset( $_POST['lls_user_login'] ) ? sanitize_user( wp_unslash( $_POST['lls_user_login'] ), true ) : '';
+		$known_lang   = isset( $_POST['lls_user_known_lang'] ) ? sanitize_text_field( wp_unslash( $_POST['lls_user_known_lang'] ) ) : 'it';
+		if ( function_exists( 'lls_known_lang_codes' ) && ! in_array( $known_lang, lls_known_lang_codes(), true ) ) {
+			$known_lang = 'it';
+		}
+
+		if ( ! is_email( $email ) ) {
+			wp_safe_redirect( add_query_arg( 'lls_account', 'err_email', $redirect ) );
+			exit;
+		}
+
+		$current = get_userdata( $user_id );
+		if ( ! $current ) {
+			wp_safe_redirect( add_query_arg( 'lls_account', 'err_update', $redirect ) );
+			exit;
+		}
+
+		if ( function_exists( 'lls_profile_maybe_update_user_login' ) ) {
+			$login_res = lls_profile_maybe_update_user_login( $user_id, $new_login, $current->user_login );
+			if ( is_wp_error( $login_res ) ) {
+				$code = $login_res->get_error_code();
+				$err  = 'err_login_invalid';
+				if ( 'existing_user_login' === $code ) {
+					$err = 'err_login_taken';
+				}
+				wp_safe_redirect( add_query_arg( 'lls_account', $err, $redirect ) );
+				exit;
+			}
+		}
+
+		$current = get_userdata( $user_id );
+		if ( ! $current ) {
+			wp_safe_redirect( add_query_arg( 'lls_account', 'err_update', $redirect ) );
+			exit;
+		}
+
+		if ( $display_name === '' ) {
+			$display_name = $current->display_name !== '' ? $current->display_name : $current->user_login;
+		}
+
+		$args = [
+			'ID'           => $user_id,
+			'display_name' => $display_name,
+			'user_email'   => $email,
+		];
+
+		if ( $pass1 !== '' || $pass2 !== '' ) {
+			if ( $pass1 !== $pass2 ) {
+				wp_safe_redirect( add_query_arg( 'lls_account', 'err_pass_match', $redirect ) );
+				exit;
+			}
+			$min_len = (int) apply_filters( 'lls_profile_account_min_password_length', 8 );
+			if ( $min_len > 0 && strlen( $pass1 ) < $min_len ) {
+				wp_safe_redirect( add_query_arg( 'lls_account', 'err_pass_short', $redirect ) );
+				exit;
+			}
+			$args['user_pass'] = $pass1;
+		}
+
+		$result = wp_update_user( $args );
+		if ( is_wp_error( $result ) ) {
+			$code = $result->get_error_code();
+			$flag = 'err_update';
+			if ( 'existing_user_email' === $code ) {
+				$flag = 'err_email_taken';
+			}
+			if ( 'existing_user_login' === $code ) {
+				$flag = 'err_login_taken';
+			}
+			wp_safe_redirect( add_query_arg( 'lls_account', $flag, $redirect ) );
+			exit;
+		}
+
+		if ( function_exists( 'lls_user_known_lang_meta_key' ) ) {
+			update_user_meta( $user_id, lls_user_known_lang_meta_key(), $known_lang );
+		}
+
+		wp_safe_redirect( add_query_arg( 'lls_account', 'ok', $redirect ) );
 		exit;
 	}
 
@@ -459,6 +580,155 @@ class LLS_Plugin {
 					<button type="submit" class="button button-primary"><?php esc_html_e( 'Salva traduzioni', 'language-learning-stories' ); ?></button>
 				</p>
 			</form>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Documentazione shortcode (menu Storie → Documentazione).
+	 */
+	public function render_documentation_page() {
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_die( esc_html__( 'Permessi insufficienti.', 'language-learning-stories' ) );
+		}
+
+		$sections = [
+			[
+				'tag'    => 'lls_header_greeting',
+				'title'  => __( 'Saluto (header)', 'language-learning-stories' ),
+				'intro'  => __( 'Per utenti connessi mostra «Ciao, [nome].» come link verso l’area personale (predefinito: /area-personale/ rispetto alla home). Per ospiti: link al login. URL area: filtro lls_account_area_url o attributo path.', 'language-learning-stories' ),
+				'where'  => __( 'Adatto all’header o al top bar: inserisci lo shortcode nel contenuto di un blocco Shortcode, in un widget HTML o nel file del tema con do_shortcode().', 'language-learning-stories' ),
+				'attrs'  => [
+					[
+						'name'     => 'path',
+						'required' => __( 'No', 'language-learning-stories' ),
+						'values'   => __( 'Slug percorso senza slash, es. area-personale. Se vuoto si usa /area-personale/ o il filtro lls_account_area_url.', 'language-learning-stories' ),
+						'help'     => __( 'Sovrascrive solo il percorso sotto la home (non l’URL completo).', 'language-learning-stories' ),
+					],
+				],
+				'ex'     => [ '[lls_header_greeting]', '[lls_header_greeting path="area-personale"]' ],
+			],
+			[
+				'tag'    => 'lls_header_daily_phrases',
+				'title'  => __( 'Frasi completate ultimi 7 giorni (header)', 'language-learning-stories' ),
+				'intro'  => __( 'Mostra sette caselle (un giorno ciascuna) con il numero di frasi completate in quel giorno per l’utente collegato. Per gli ospiti i valori sono zero. I dati si aggiornano quando il progresso viene salvato dalle storie.', 'language-learning-stories' ),
+				'where'  => __( 'Stesso contesto del saluto header.', 'language-learning-stories' ),
+				'attrs'  => [],
+				'ex'     => [ '[lls_header_daily_phrases]' ],
+			],
+			[
+				'tag'    => 'lls_profile_greeting',
+				'title'  => __( 'Saluto area personale', 'language-learning-stories' ),
+				'intro'  => __( 'Versione per pagine «Area personale»: saluto con nome; per ospiti messaggio e link «Accedi». Opzionalmente puoi mostrare il link per uscire dall’account.', 'language-learning-stories' ),
+				'where'  => __( 'Pagina dedicata al profilo o dashboard utente.', 'language-learning-stories' ),
+				'attrs'  => [
+					[
+						'name'     => 'logout',
+						'required' => __( 'No', 'language-learning-stories' ),
+						'values'   => '0 (predefinito), 1 oppure true',
+						'help'     => __( 'Se impostato a 1 o true, sotto al saluto viene aggiunto il link «Esci» (logout) con ritorno alla pagina corrente.', 'language-learning-stories' ),
+					],
+				],
+				'ex'     => [ '[lls_profile_greeting]', '[lls_profile_greeting logout="1"]' ],
+			],
+			[
+				'tag'    => 'lls_profile_continue_stories',
+				'title'  => __( 'Storie in corso (area personale)', 'language-learning-stories' ),
+				'intro'  => __( 'Elenco delle storie che l’utente ha iniziato ma non completato: titolo con link, categorie e tag (tassonomie lls_story_category e lls_story_tag, con link agli archivi), trama (estratto o inizio contenuto), barra di avanzamento frasi completate / totali e pulsante «Continua la storia». Ordine: ultime storie con salvataggio progresso, poi le altre. Le storie completate al 100% non compaiono.', 'language-learning-stories' ),
+				'where'  => __( 'Pagina area personale insieme al saluto profilo.', 'language-learning-stories' ),
+				'attrs'  => [
+					[
+						'name'     => 'limit',
+						'required' => __( 'No', 'language-learning-stories' ),
+						'values'   => __( 'Numero intero da 1 a 50. Predefinito: 10.', 'language-learning-stories' ),
+						'help'     => __( 'Quante storie mostrare al massimo.', 'language-learning-stories' ),
+					],
+					[
+						'name'     => 'words',
+						'required' => __( 'No', 'language-learning-stories' ),
+						'values'   => __( 'Numero intero da 5 a 80. Predefinito: 40.', 'language-learning-stories' ),
+						'help'     => __( 'Lunghezza della trama in parole (estratto o contenuto tagliato).', 'language-learning-stories' ),
+					],
+				],
+				'ex'     => [ '[lls_profile_continue_stories]', '[lls_profile_continue_stories limit="5" words="30"]' ],
+			],
+			[
+				'tag'    => 'lls_profile_account',
+				'title'  => __( 'Dati account (area personale)', 'language-learning-stories' ),
+				'intro'  => __( 'Vista riepilogo con pulsante «Modifica»: nome accesso, nome visualizzato, email, lingua che conosci (select Italiano / Polacco / Spagnolo, salvata in user meta), password. La password in chiaro in vista è una copia salvata con wp_set_password (vedi filtro lls_store_plain_password_for_profile_display). Per leggere la lingua da codice: lls_get_user_known_lang().', 'language-learning-stories' ),
+				'where'  => __( 'Pagina area personale accanto agli altri shortcode profilo.', 'language-learning-stories' ),
+				'attrs'  => [],
+				'ex'     => [ '[lls_profile_account]' ],
+			],
+		];
+
+		?>
+		<div class="wrap lls-documentation-wrap">
+			<h1><?php esc_html_e( 'Documentazione shortcode', 'language-learning-stories' ); ?></h1>
+			<p class="description">
+				<?php esc_html_e( 'Shortcode del plugin Language Learning Stories. Incollali nel contenuto di una pagina (blocco Shortcode), in un widget o nel tema; WordPress deve elaborarli (il tema elabora di solito il contenuto delle pagine automaticamente).', 'language-learning-stories' ); ?>
+			</p>
+			<style>
+				.lls-documentation-wrap .lls-doc-code {
+					background: #f6f7f7;
+					border: 1px solid #c3c4c7;
+					padding: 12px 14px;
+					overflow: auto;
+					font-size: 13px;
+					line-height: 1.5;
+					margin: 0.5em 0 0;
+				}
+				.lls-documentation-wrap .lls-doc-section h2 code {
+					font-size: 1.05em;
+				}
+				.lls-documentation-wrap table.lls-doc-attrs th {
+					text-align: left;
+				}
+			</style>
+
+			<?php foreach ( $sections as $sec ) : ?>
+				<div class="postbox lls-doc-section" style="margin-top:18px;padding:16px 20px;">
+					<h2 style="margin-top:0;">
+						<code>[<?php echo esc_html( $sec['tag'] ); ?>]</code>
+						— <?php echo esc_html( $sec['title'] ); ?>
+					</h2>
+					<p><?php echo esc_html( $sec['intro'] ); ?></p>
+					<?php if ( ! empty( $sec['where'] ) ) : ?>
+						<p class="description"><?php echo esc_html( $sec['where'] ); ?></p>
+					<?php endif; ?>
+
+					<h3 style="font-size:14px;margin:1.25em 0 0.5em;"><?php esc_html_e( 'Campi / attributi', 'language-learning-stories' ); ?></h3>
+					<?php if ( empty( $sec['attrs'] ) ) : ?>
+						<p><em><?php esc_html_e( 'Nessun attributo: usa solo il tag così com’è.', 'language-learning-stories' ); ?></em></p>
+					<?php else : ?>
+						<table class="widefat striped lls-doc-attrs" style="max-width:920px;">
+							<thead>
+								<tr>
+									<th scope="col"><?php esc_html_e( 'Nome', 'language-learning-stories' ); ?></th>
+									<th scope="col"><?php esc_html_e( 'Obbligatorio', 'language-learning-stories' ); ?></th>
+									<th scope="col"><?php esc_html_e( 'Valori', 'language-learning-stories' ); ?></th>
+									<th scope="col"><?php esc_html_e( 'Descrizione', 'language-learning-stories' ); ?></th>
+								</tr>
+							</thead>
+							<tbody>
+								<?php foreach ( $sec['attrs'] as $row ) : ?>
+									<tr>
+										<td><code><?php echo esc_html( $row['name'] ); ?></code></td>
+										<td><?php echo esc_html( $row['required'] ); ?></td>
+										<td><?php echo esc_html( $row['values'] ); ?></td>
+										<td><?php echo esc_html( $row['help'] ); ?></td>
+									</tr>
+								<?php endforeach; ?>
+							</tbody>
+						</table>
+					<?php endif; ?>
+
+					<h3 style="font-size:14px;margin:1.25em 0 0.5em;"><?php esc_html_e( 'Esempi', 'language-learning-stories' ); ?></h3>
+					<?php foreach ( $sec['ex'] as $example ) : ?>
+						<pre class="lls-doc-code"><?php echo esc_html( $example ); ?></pre>
+					<?php endforeach; ?>
+				</div>
+			<?php endforeach; ?>
 		</div>
 		<?php
 	}
@@ -1103,6 +1373,9 @@ class LLS_Plugin {
 			if ( $delta > 0 && function_exists( 'lls_increment_user_daily_phrases' ) ) {
 				lls_increment_user_daily_phrases( $user_id, $delta );
 			}
+			if ( function_exists( 'lls_touch_user_recent_story' ) ) {
+				lls_touch_user_recent_story( $user_id, $story_id );
+			}
 		}
 
 		wp_send_json_success();
@@ -1116,11 +1389,41 @@ class LLS_Plugin {
 			return;
 		}
 		$plugin_url = plugin_dir_url( __FILE__ );
+
+		wp_enqueue_style(
+			'lls-frontend-font',
+			'https://fonts.googleapis.com/css2?family=Manrope:wght@300;600&display=swap',
+			[],
+			null
+		);
+
+		wp_enqueue_style(
+			'lls-shortcodes-shared',
+			$plugin_url . 'assets/lls-shortcodes-shared.css',
+			[ 'lls-frontend-font' ],
+			LLS_PLUGIN_VERSION
+		);
+
 		wp_enqueue_style(
 			'lls-header-shortcodes',
 			$plugin_url . 'assets/lls-header-shortcodes.css',
-			[],
+			[ 'lls-shortcodes-shared' ],
 			LLS_PLUGIN_VERSION
+		);
+
+		wp_enqueue_style(
+			'lls-profile-shortcodes',
+			$plugin_url . 'assets/lls-profile-shortcodes.css',
+			[ 'lls-shortcodes-shared' ],
+			LLS_PLUGIN_VERSION
+		);
+
+		wp_register_script(
+			'lls-profile-account',
+			$plugin_url . 'assets/lls-profile-account.js',
+			[],
+			LLS_PLUGIN_VERSION,
+			true
 		);
 	}
 

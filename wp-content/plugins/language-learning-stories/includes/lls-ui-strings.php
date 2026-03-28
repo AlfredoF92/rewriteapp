@@ -19,6 +19,49 @@ function lls_known_lang_codes() {
 }
 
 /**
+ * User meta: lingua che l’utente conosce (interfaccia it / pl / es).
+ *
+ * @return string
+ */
+function lls_user_known_lang_meta_key() {
+	return '_lls_user_known_lang';
+}
+
+/**
+ * Lingua conosciuta salvata sul profilo utente (default it se assente o non valida).
+ *
+ * @param int|null $user_id ID utente o null per l’utente corrente.
+ * @return string Codice it|pl|es.
+ */
+function lls_get_user_known_lang( $user_id = null ) {
+	if ( null === $user_id ) {
+		$user_id = get_current_user_id();
+	}
+	$user_id = (int) $user_id;
+	if ( $user_id <= 0 ) {
+		return 'it';
+	}
+	$raw = get_user_meta( $user_id, lls_user_known_lang_meta_key(), true );
+	if ( ! is_string( $raw ) || ! in_array( $raw, lls_known_lang_codes(), true ) ) {
+		return 'it';
+	}
+	return $raw;
+}
+
+/**
+ * Etichette per select «lingua che conosci» (stessi codici di {@see lls_known_lang_codes()}).
+ *
+ * @return array<string, string>
+ */
+function lls_get_known_lang_choice_labels() {
+	return [
+		'it' => __( 'Italian', 'language-learning-stories' ),
+		'pl' => __( 'Polish', 'language-learning-stories' ),
+		'es' => __( 'Spanish', 'language-learning-stories' ),
+	];
+}
+
+/**
  * Catalogo raggruppato (etichette admin + default italiano).
  *
  * @return array<string, array{title: string, strings: array<string, array{label: string, default: string}>}>

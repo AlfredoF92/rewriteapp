@@ -1,13 +1,19 @@
-/* Shortcode header: saluto e box giornalieri frasi completate */
+/* Shortcode header: layout; colori/font da .lls-shortcodes + lls-shortcodes-shared.css */
 
 .lls-sc-greeting {
 	display: inline-block;
-	font-size: 0.95rem;
 	line-height: 1.4;
 }
 
-.lls-sc-greeting a {
+.lls-shortcodes a.lls-sc-greeting--link,
+.lls-shortcodes a.lls-sc-greeting--link:visited {
+	color: inherit;
+	text-decoration: none;
+}
+
+.lls-shortcodes a.lls-sc-greeting--link:hover {
 	text-decoration: underline;
+	opacity: 0.92;
 }
 
 .lls-sc-week {
@@ -25,13 +31,12 @@
 	align-items: center;
 	min-width: 3.25rem;
 	text-align: center;
-	font-size: 0.75rem;
 	line-height: 1.2;
 }
 
 .lls-sc-day__label {
 	display: block;
-	color: rgba(0, 0, 0, 0.55);
+	color: var(--lls-ink-soft, #4a4a4a);
 	font-size: 0.65rem;
 	text-transform: capitalize;
 	margin-bottom: 0.15rem;
@@ -41,4 +46,5 @@
 	display: block;
 	font-weight: 600;
 	font-size: 0.85rem;
+	color: var(--lls-ink, #2c2c2c);
 }

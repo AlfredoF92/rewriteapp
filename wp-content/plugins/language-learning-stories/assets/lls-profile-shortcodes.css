@@ -1,0 +1,239 @@
+/* Area personale: layout; tipografia e componenti da lls-shortcodes-shared.css */
+
+.lls-profile-greeting {
+	margin-bottom: 1.5rem;
+}
+
+.lls-profile-greeting--guest p {
+	margin: 0;
+}
+
+.lls-profile-continue__list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 1.5rem;
+}
+
+.lls-profile-continue__item {
+	margin: 0;
+	padding: 2.25rem 0;
+}
+
+.lls-profile-continue__tax {
+	margin: 0 0 0.65rem;
+}
+
+.lls-profile-continue__terms {
+	margin: 0.25rem 0 0;
+	font-size: 0.88rem;
+	line-height: 1.45;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
+.lls-profile-continue__terms:first-child {
+	margin-top: 0;
+}
+
+.lls-profile-continue__terms-label {
+	font-weight: 600;
+	margin-right: 0.35rem;
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-shortcodes .lls-profile-continue__terms-list a {
+	color: var(--lls-ink-soft, #4a4a4a);
+	text-decoration: underline;
+	text-underline-offset: 0.12em;
+}
+
+.lls-shortcodes .lls-profile-continue__terms-list a:hover {
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-profile-continue__summary {
+	margin: 0 0 1rem;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
+.lls-profile-continue--empty p,
+.lls-profile-continue--guest p {
+	margin: 0;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
+/* Modulo dati account */
+.lls-shortcodes .lls-profile-account__view {
+	display: block;
+}
+
+.lls-shortcodes .lls-profile-account__edit {
+	display: none;
+}
+
+.lls-shortcodes .lls-profile-account--editing .lls-profile-account__view {
+	display: none;
+}
+
+.lls-shortcodes .lls-profile-account--editing .lls-profile-account__edit {
+	display: block;
+}
+
+.lls-shortcodes .lls-profile-account__view-actions {
+	margin: 1rem 0 0;
+}
+
+.lls-shortcodes .lls-profile-account__password-view {
+	margin: 0;
+	max-width: 36rem;
+	line-height: 1.45;
+	font-size: 0.95rem;
+}
+
+.lls-shortcodes .lls-profile-account__password-plain {
+	display: inline-block;
+	margin: 0;
+	padding: 0.15rem 0.4rem;
+	font-size: 1em;
+	background: rgba(0, 0, 0, 0.05);
+	border-radius: 4px;
+	word-break: break-all;
+}
+
+.lls-shortcodes .lls-profile-account__password-missing {
+	color: var(--lls-ink-soft, #4a4a4a);
+	font-size: 0.92rem;
+}
+
+.lls-shortcodes .lls-profile-account__actions--edit {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.65rem;
+	align-items: center;
+}
+
+.lls-shortcodes .lls-profile-account__btn-cancel {
+	background: transparent;
+	color: var(--lls-ink, #1a1a1a);
+	border: 2px solid rgba(0, 0, 0, 0.2);
+}
+
+.lls-shortcodes .lls-profile-account__btn-cancel:hover {
+	border-color: rgba(0, 0, 0, 0.35);
+	color: var(--lls-ink, #1a1a1a);
+	background: transparent;
+	opacity: 1;
+}
+
+.lls-shortcodes .lls-profile-account__password-hint--top {
+	margin: 0 0 0.75rem;
+}
+
+.lls-shortcodes .lls-profile-account__readonly-block {
+	margin: 0 0 0.75rem;
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 0.35rem 1rem;
+	align-items: baseline;
+	font-size: 0.95rem;
+}
+
+.lls-shortcodes .lls-profile-account__readonly-block dt {
+	margin: 0;
+	font-weight: 600;
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-shortcodes .lls-profile-account__readonly-block dd {
+	margin: 0;
+}
+
+.lls-shortcodes .lls-profile-account__login {
+	font-size: 1em;
+	padding: 0.15rem 0.4rem;
+	background: rgba(0, 0, 0, 0.05);
+	border-radius: 4px;
+}
+
+.lls-shortcodes .lls-profile-account__hint {
+	margin: 0 0 1.25rem;
+	font-size: 0.9rem;
+	color: var(--lls-ink-soft, #4a4a4a);
+	line-height: 1.45;
+}
+
+.lls-shortcodes .lls-profile-account__notice {
+	margin: 0 0 1rem;
+	padding: 0.65rem 0.85rem;
+	border-radius: 6px;
+	font-size: 0.95rem;
+}
+
+.lls-shortcodes .lls-profile-account__notice--ok {
+	background: rgba(34, 139, 34, 0.12);
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-shortcodes .lls-profile-account__notice--err {
+	background: rgba(178, 34, 34, 0.12);
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-shortcodes .lls-profile-account__field {
+	margin: 0 0 1rem;
+}
+
+.lls-shortcodes .lls-profile-account__field label {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 0.35rem;
+	font-size: 0.95rem;
+}
+
+.lls-shortcodes .lls-profile-account__input,
+.lls-shortcodes .lls-profile-account__select {
+	width: 100%;
+	max-width: 28rem;
+	box-sizing: border-box;
+	padding: 0.55rem 0.65rem;
+	font: inherit;
+	border: 1px solid rgba(0, 0, 0, 0.18);
+	border-radius: 6px;
+	background: #fff;
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-shortcodes .lls-profile-account__select {
+	cursor: pointer;
+	appearance: auto;
+}
+
+.lls-shortcodes .lls-profile-account__fieldset {
+	margin: 0 0 0.5rem;
+	padding: 0;
+	border: none;
+}
+
+.lls-shortcodes .lls-profile-account__fieldset legend {
+	font-weight: 600;
+	margin-bottom: 0.5rem;
+	padding: 0;
+	font-size: 0.95rem;
+}
+
+.lls-shortcodes .lls-profile-account__password-hint {
+	margin: -0.35rem 0 0;
+	font-size: 0.85rem;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
+.lls-shortcodes .lls-profile-account__actions {
+	margin: 1.25rem 0 0;
+}
+
+.lls-shortcodes .lls-profile-account--guest p {
+	margin: 0;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
