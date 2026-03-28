@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Language Learning Stories
  * Description: Gestione storie con frasi, traduzioni e immagini per esercizi di traduzione.
- * Version:     0.2.0
+ * Version:     0.2.1
  * Author:      ReadWrite
  * Text Domain: language-learning-stories
  */
@@ -14,12 +14,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 require_once __DIR__ . '/includes/lls-ui-strings.php';
 require_once __DIR__ . '/includes/lls-header-shortcodes.php';
 
-define( 'LLS_PLUGIN_VERSION', '0.2.0' );
+define( 'LLS_PLUGIN_VERSION', '0.2.1' );
 
 class LLS_Plugin {
 
 	public function __construct() {
 		add_action( 'init', [ $this, 'register_post_type' ], 5 );
+		add_action( 'init', [ $this, 'register_story_taxonomies' ], 6 );
 		add_action( 'init', [ $this, 'maybe_flush_rewrite_rules' ], 20 );
 		add_action( 'init', [ $this, 'maybe_migrate_remove_alt3' ], 25 );
 		add_action( 'init', [ $this, 'maybe_seed_ui_strings_pl_es' ], 26 );
@@ -246,6 +247,78 @@ class LLS_Plugin {
 		];
 
 		register_post_type( 'lls_story', $args );
+	}
+
+	/**
+	 * Categorie e tag dedicati alle storie (non condivisi con gli articoli).
+	 */
+	public function register_story_taxonomies() {
+		$cat_labels = [
+			'name'              => __( 'Categorie storia', 'language-learning-stories' ),
+			'singular_name'     => __( 'Categoria storia', 'language-learning-stories' ),
+			'search_items'      => __( 'Cerca categorie', 'language-learning-stories' ),
+			'all_items'         => __( 'Tutte le categorie', 'language-learning-stories' ),
+			'parent_item'       => __( 'Categoria genitore', 'language-learning-stories' ),
+			'parent_item_colon' => __( 'Categoria genitore:', 'language-learning-stories' ),
+			'edit_item'         => __( 'Modifica categoria', 'language-learning-stories' ),
+			'update_item'       => __( 'Aggiorna categoria', 'language-learning-stories' ),
+			'add_new_item'      => __( 'Aggiungi nuova categoria', 'language-learning-stories' ),
+			'new_item_name'     => __( 'Nome nuova categoria', 'language-learning-stories' ),
+			'menu_name'         => __( 'Categorie', 'language-learning-stories' ),
+		];
+
+		register_taxonomy(
+			'lls_story_category',
+			[ 'lls_story' ],
+			[
+				'labels'            => $cat_labels,
+				'public'            => true,
+				'hierarchical'      => true,
+				'show_ui'           => true,
+				'show_admin_column' => true,
+				'show_in_nav_menus' => true,
+				'show_in_rest'      => true,
+				'rewrite'           => [
+					'slug'         => 'storia-categoria',
+					'hierarchical' => true,
+					'with_front'   => false,
+				],
+			]
+		);
+
+		$tag_labels = [
+			'name'                       => __( 'Tag storia', 'language-learning-stories' ),
+			'singular_name'              => __( 'Tag storia', 'language-learning-stories' ),
+			'search_items'               => __( 'Cerca tag', 'language-learning-stories' ),
+			'popular_items'              => __( 'Tag più usati', 'language-learning-stories' ),
+			'all_items'                  => __( 'Tutti i tag', 'language-learning-stories' ),
+			'edit_item'                  => __( 'Modifica tag', 'language-learning-stories' ),
+			'update_item'                => __( 'Aggiorna tag', 'language-learning-stories' ),
+			'add_new_item'               => __( 'Aggiungi nuovo tag', 'language-learning-stories' ),
+			'new_item_name'              => __( 'Nome nuovo tag', 'language-learning-stories' ),
+			'separate_items_with_commas' => __( 'Separa i tag con una virgola', 'language-learning-stories' ),
+			'add_or_remove_items'        => __( 'Aggiungi o rimuovi tag', 'language-learning-stories' ),
+			'choose_from_most_used'      => __( 'Scegli tra i più usati', 'language-learning-stories' ),
+			'menu_name'                  => __( 'Tag', 'language-learning-stories' ),
+		];
+
+		register_taxonomy(
+			'lls_story_tag',
+			[ 'lls_story' ],
+			[
+				'labels'            => $tag_labels,
+				'public'            => true,
+				'hierarchical'      => false,
+				'show_ui'           => true,
+				'show_admin_column' => true,
+				'show_in_nav_menus' => true,
+				'show_in_rest'      => true,
+				'rewrite'           => [
+					'slug'       => 'storia-tag',
+					'with_front' => false,
+				],
+			]
+		);
 	}
 
 	/**
@@ -893,6 +966,18 @@ register_activation_hook( __FILE__, function () {
 		'publicly_queryable' => true,
 		'rewrite'      => [ 'slug' => 'storie' ],
 		'has_archive'  => false,
+	] );
+	register_taxonomy( 'lls_story_category', 'lls_story', [
+		'public'       => true,
+		'hierarchical' => true,
+		'show_in_rest' => true,
+		'rewrite'      => [ 'slug' => 'storia-categoria', 'hierarchical' => true, 'with_front' => false ],
+	] );
+	register_taxonomy( 'lls_story_tag', 'lls_story', [
+		'public'       => true,
+		'hierarchical' => false,
+		'show_in_rest' => true,
+		'rewrite'      => [ 'slug' => 'storia-tag', 'with_front' => false ],
 	] );
 	flush_rewrite_rules();
 } );
