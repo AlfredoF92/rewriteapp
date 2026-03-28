@@ -17,6 +17,7 @@ require_once __DIR__ . '/includes/lls-app-logo-shortcodes.php';
 require_once __DIR__ . '/includes/lls-footer-app-nav-settings.php';
 require_once __DIR__ . '/includes/lls-footer-shortcodes.php';
 require_once __DIR__ . '/includes/lls-profile-shortcodes.php';
+require_once __DIR__ . '/includes/lls-coin-shortcodes.php';
 require_once __DIR__ . '/includes/lls-login-shortcodes.php';
 require_once __DIR__ . '/includes/lls-login-intro-settings.php';
 require_once __DIR__ . '/includes/lls-login-intro-shortcodes.php';
@@ -1702,6 +1703,7 @@ class LLS_Plugin {
 			wp_send_json_error();
 		}
 
+		$coin_total = null;
 		if ( is_user_logged_in() ) {
 			$user_id = get_current_user_id();
 			$old_completed = 0;
@@ -1723,9 +1725,16 @@ class LLS_Plugin {
 			if ( function_exists( 'lls_touch_user_recent_story' ) ) {
 				lls_touch_user_recent_story( $user_id, $story_id );
 			}
+			if ( function_exists( 'lls_get_user_total_completed_sentences' ) ) {
+				$coin_total = lls_get_user_total_completed_sentences( $user_id );
+			}
 		}
 
-		wp_send_json_success();
+		$payload = [];
+		if ( null !== $coin_total ) {
+			$payload['coin_total'] = (int) $coin_total;
+		}
+		wp_send_json_success( $payload );
 	}
 
 	/**
@@ -1754,6 +1763,13 @@ class LLS_Plugin {
 		wp_enqueue_style(
 			'lls-header-shortcodes',
 			$plugin_url . 'assets/lls-header-shortcodes.css',
+			[ 'lls-shortcodes-shared' ],
+			LLS_PLUGIN_VERSION
+		);
+
+		wp_enqueue_style(
+			'lls-coin',
+			$plugin_url . 'assets/lls-coin.css',
 			[ 'lls-shortcodes-shared' ],
 			LLS_PLUGIN_VERSION
 		);

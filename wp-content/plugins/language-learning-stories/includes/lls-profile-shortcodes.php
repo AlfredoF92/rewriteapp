@@ -69,6 +69,27 @@ function lls_collect_user_progress_story_ids( $user_id ) {
 }
 
 /**
+ * Somma delle frasi completate su tutte le storie (valore `completed` nei meta `_lls_progress_{id}`).
+ *
+ * @param int $user_id ID utente.
+ * @return int
+ */
+function lls_get_user_total_completed_sentences( $user_id ) {
+	$user_id = (int) $user_id;
+	if ( $user_id <= 0 ) {
+		return 0;
+	}
+	$total = 0;
+	foreach ( lls_collect_user_progress_story_ids( $user_id ) as $story_id ) {
+		$saved = get_user_meta( $user_id, '_lls_progress_' . $story_id, true );
+		if ( is_array( $saved ) && isset( $saved['completed'] ) ) {
+			$total += max( 0, (int) $saved['completed'] );
+		}
+	}
+	return $total;
+}
+
+/**
  * Ordina gli ID: prima _lls_recent_stories, poi gli altri per data modifica post decrescente.
  *
  * @param int   $user_id ID utente.

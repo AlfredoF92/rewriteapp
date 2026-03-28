@@ -1,0 +1,26 @@
+/**
+ * Shortcode Coin: totale frasi completate.
+ */
+.lls-shortcodes .lls-coin {
+	display: inline-flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	align-items: baseline;
+	gap: 0.35em;
+	font-family: var(--lls-font, "Manrope", "Segoe UI", Arial, sans-serif);
+	font-size: clamp(0.9rem, 2.4vw, 1rem);
+	font-weight: 600;
+	color: #fff;
+	line-height: 1.2;
+}
+
+.lls-shortcodes .lls-coin__label {
+	font-weight: 600;
+	color: #fff;
+}
+
+.lls-shortcodes .lls-coin__value {
+	font-variant-numeric: tabular-nums;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+}

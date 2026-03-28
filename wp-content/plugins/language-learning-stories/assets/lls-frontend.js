@@ -858,12 +858,21 @@
 	}
 
 	function saveProgress() {
-		$.post(data.ajaxUrl, {
-			action: 'lls_save_progress',
-			nonce: data.nonce,
-			story_id: data.storyId,
-			completed: state.completedIndex,
-			story_text: state.storyHtml
+		$.ajax({
+			url: data.ajaxUrl,
+			type: 'POST',
+			dataType: 'json',
+			data: {
+				action: 'lls_save_progress',
+				nonce: data.nonce,
+				story_id: data.storyId,
+				completed: state.completedIndex,
+				story_text: state.storyHtml
+			}
+		}).done(function (resp) {
+			if (resp && resp.success && resp.data && typeof resp.data.coin_total === 'number') {
+				$('.lls-coin__value[data-lls-coin-value]').text(String(resp.data.coin_total));
+			}
 		});
 	}
 
