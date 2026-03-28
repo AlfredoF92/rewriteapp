@@ -13,6 +13,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 require_once __DIR__ . '/includes/lls-ui-strings.php';
 require_once __DIR__ . '/includes/lls-header-shortcodes.php';
+require_once __DIR__ . '/includes/lls-footer-app-nav-settings.php';
+require_once __DIR__ . '/includes/lls-footer-shortcodes.php';
 require_once __DIR__ . '/includes/lls-profile-shortcodes.php';
 
 define( 'LLS_PLUGIN_VERSION', '0.2.1' );
@@ -40,9 +42,11 @@ class LLS_Plugin {
 		add_action( 'admin_menu', [ $this, 'mark_story_lang_submenu_classes' ], 999 );
 		add_action( 'admin_menu', [ $this, 'add_translations_submenu' ], 25 );
 		add_action( 'admin_menu', [ $this, 'add_documentation_submenu' ], 26 );
+		add_action( 'admin_menu', [ $this, 'add_footer_app_nav_settings_submenu' ], 27 );
 		add_filter( 'submenu_file', [ $this, 'submenu_file_for_lls_lang_list' ], 10, 2 );
 		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_menu_lang_style' ] );
 		add_action( 'admin_post_lls_save_ui_strings', [ $this, 'handle_save_ui_strings' ] );
+		add_action( 'admin_post_lls_save_footer_app_nav_settings', [ $this, 'handle_save_footer_app_nav_settings' ] );
 		add_action( 'admin_post_lls_update_user_profile', [ $this, 'handle_update_user_profile' ] );
 
 		add_filter( 'manage_lls_story_posts_columns', [ $this, 'story_list_columns' ] );
@@ -370,6 +374,29 @@ class LLS_Plugin {
 	}
 
 	/**
+	 * Impostazioni testi, URL e dimensioni del menu [lls_footer_app_nav].
+	 */
+	public function add_footer_app_nav_settings_submenu() {
+		add_submenu_page(
+			'edit.php?post_type=lls_story',
+			__( 'Menu footer (navigazione app)', 'language-learning-stories' ),
+			__( 'Menu footer app', 'language-learning-stories' ),
+			'manage_options',
+			'lls-footer-app-nav',
+			[ $this, 'render_footer_app_nav_settings_page' ]
+		);
+	}
+
+	/**
+	 * Pagina impostazioni menu footer app.
+	 */
+	public function render_footer_app_nav_settings_page() {
+		if ( function_exists( 'lls_footer_app_nav_render_settings_page' ) ) {
+			lls_footer_app_nav_render_settings_page();
+		}
+	}
+
+	/**
 	 * Salva opzione lls_ui_strings dal form Traduzioni.
 	 */
 	public function handle_save_ui_strings() {
@@ -384,6 +411,24 @@ class LLS_Plugin {
 			$redirect = admin_url( 'edit.php?post_type=lls_story&page=lls-translations' );
 		}
 		wp_safe_redirect( add_query_arg( 'lls_ui_saved', '1', $redirect ) );
+		exit;
+	}
+
+	/**
+	 * Salva opzione menu footer app (shortcode lls_footer_app_nav).
+	 */
+	public function handle_save_footer_app_nav_settings() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Permessi insufficienti.', 'language-learning-stories' ) );
+		}
+		check_admin_referer( 'lls_save_footer_app_nav_settings', 'lls_footer_app_nav_nonce' );
+		$raw = isset( $_POST['lls_footer_app_nav'] ) ? wp_unslash( $_POST['lls_footer_app_nav'] ) : [];
+		update_option( LLS_FOOTER_APP_NAV_OPTION, lls_footer_app_nav_sanitize_settings( $raw ) );
+		$redirect = isset( $_POST['_wp_http_referer'] ) ? esc_url_raw( wp_unslash( $_POST['_wp_http_referer'] ) ) : '';
+		if ( ! $redirect ) {
+			$redirect = admin_url( 'edit.php?post_type=lls_story&page=lls-footer-app-nav' );
+		}
+		wp_safe_redirect( add_query_arg( 'lls_footer_nav_saved', '1', $redirect ) );
 		exit;
 	}
 
@@ -711,13 +756,52 @@ class LLS_Plugin {
 					],
 				],
 			],
+			[
+				'group_title' => __( 'Shortcode per footer (navigazione app)', 'language-learning-stories' ),
+				'group_intro' => __( 'Barra orizzontale da widget footer o contenuto pagina: quattro voci con lettera grande (L, C, simbolo riproduzione per Play, P) e sotto l’etichetta. Link predefiniti: /library/, /community/, /play/, /area-personale/. Evidenziazione voce corrente in base all’URL.', 'language-learning-stories' ),
+				'sections'    => [
+					[
+						'tag'    => 'lls_footer_app_nav',
+						'title'  => __( 'Menu footer stile app', 'language-learning-stories' ),
+						'intro'  => __( 'Navigazione responsive con Manrope e colori LLS: prima lettera grande e resto del nome in piccolo (es. L+ibrary). Sottolineatura solo su hover o sulla pagina corrente. Da Storie → Menu footer app puoi modificare testi, URL e dimensioni senza codice. In alternativa: filtro lls_footer_app_nav_items o attributi *_path nello shortcode.', 'language-learning-stories' ),
+						'where'  => __( 'Widget footer, blocco HTML, o file footer.php con do_shortcode().', 'language-learning-stories' ),
+						'attrs'  => [
+							[
+								'name'     => 'library_path',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'Slug percorso sotto la home. Predefinito: library.', 'language-learning-stories' ),
+								'help'     => __( 'Solo caratteri sicuri per URL; slash iniziale/finale ignorati.', 'language-learning-stories' ),
+							],
+							[
+								'name'     => 'community_path',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'Predefinito: community.', 'language-learning-stories' ),
+								'help'     => __( 'Percorso della pagina Community sotto la home.', 'language-learning-stories' ),
+							],
+							[
+								'name'     => 'play_path',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'Predefinito: play.', 'language-learning-stories' ),
+								'help'     => __( 'Percorso della pagina Play sotto la home.', 'language-learning-stories' ),
+							],
+							[
+								'name'     => 'profile_path',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'Predefinito: area-personale.', 'language-learning-stories' ),
+								'help'     => __( 'Percorso dell’area personale (profilo).', 'language-learning-stories' ),
+							],
+						],
+						'ex'     => [ '[lls_footer_app_nav]', '[lls_footer_app_nav profile_path="area-personale"]' ],
+					],
+				],
+			],
 		];
 
 		?>
 		<div class="wrap lls-documentation-wrap">
 			<h1><?php esc_html_e( 'Documentazione shortcode', 'language-learning-stories' ); ?></h1>
 			<p class="description">
-				<?php esc_html_e( 'Shortcode del plugin Language Learning Stories, raggruppati per tipo di pagina (intestazione, libreria, area utente). Incollali nel contenuto di una pagina (blocco Shortcode), in un widget o nel tema; WordPress deve elaborarli (il tema elabora di solito il contenuto delle pagine automaticamente).', 'language-learning-stories' ); ?>
+				<?php esc_html_e( 'Shortcode del plugin Language Learning Stories, raggruppati per tipo di pagina (intestazione, libreria, area utente, footer). Incollali nel contenuto di una pagina (blocco Shortcode), in un widget o nel tema; WordPress deve elaborarli (il tema elabora di solito il contenuto delle pagine automaticamente).', 'language-learning-stories' ); ?>
 			</p>
 			<style>
 				.lls-documentation-wrap .lls-doc-code {
@@ -1466,7 +1550,7 @@ class LLS_Plugin {
 	}
 
 	/**
-	 * Stili per gli shortcode header (saluto e box giornalieri).
+	 * Stili per shortcode header, footer app-nav e area profilo.
 	 */
 	public function enqueue_header_shortcode_assets() {
 		if ( is_admin() ) {
@@ -1491,6 +1575,13 @@ class LLS_Plugin {
 		wp_enqueue_style(
 			'lls-header-shortcodes',
 			$plugin_url . 'assets/lls-header-shortcodes.css',
+			[ 'lls-shortcodes-shared' ],
+			LLS_PLUGIN_VERSION
+		);
+
+		wp_enqueue_style(
+			'lls-footer-app-nav',
+			$plugin_url . 'assets/lls-footer-app-nav.css',
 			[ 'lls-shortcodes-shared' ],
 			LLS_PLUGIN_VERSION
 		);
