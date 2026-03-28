@@ -15,3 +15,6 @@ vendor/
 wp-content/cache/
 wp-content/uploads/cache/
 wp-content/upgrade/
+
+# Duplicator Lite backups (file molto grandi)
+wp-content/backups-dup-lite/

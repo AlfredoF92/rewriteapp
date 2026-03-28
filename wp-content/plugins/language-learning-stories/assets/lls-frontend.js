@@ -4,6 +4,11 @@
 	if (typeof llsStory === 'undefined') return;
 
 	var data = llsStory;
+	var S = data.strings && typeof data.strings === 'object' ? data.strings : {};
+	function llsT(key) {
+		var v = S[key];
+		return (typeof v === 'string' && v !== '') ? v : '';
+	}
 	var sentences = data.sentences || [];
 	var images = data.images || [];
 	var total = sentences.length;
@@ -40,7 +45,7 @@
 		var t = (englishForListen || '').trim();
 		if (!t) return '';
 		return (
-			'<button type="button" class="lls-hear-main-translation lls-hear-main--pending" aria-label="Ascolta la traduzione in inglese" title="Ascolta la traduzione in inglese (puoi cliccare anche sulla frase)" aria-hidden="true" tabindex="-1">' +
+			'<button type="button" class="lls-hear-main-translation lls-hear-main--pending" aria-label="' + escapeAttr(llsT('hear_aria_label')) + '" title="' + escapeAttr(llsT('hear_title')) + '" aria-hidden="true" tabindex="-1">' +
 				'<span class="lls-hear-main-icon" aria-hidden="true">' +
 					'<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
 						'<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>' +
@@ -52,15 +57,6 @@
 		);
 	}
 
-	/** Primo «Continua» (traduzione iniziale): overlap ≥20% */
-	var LLS_CONTINUE_FIRST_TRANSLATION_HINT =
-		'Per continuare prova a scrivere almeno un paio di parole in inglese corrette…';
-
-	/** Secondo «Continua» (riscrittura): frase uguale a una traduzione proposta */
-	var LLS_CONTINUE_REWRITE_HINT =
-		'Prima di continuare, scrivi o pronuncia correttamente una delle traduzioni proposte…';
-
-	var LLS_REWRITE_SUCCESS_HTML = '<p>Bravo! Ottimo lavoro… Continuiamo la storia…</p>';
 	var LLS_REWRITE_SUCCESS_DELAY_MS = 3000;
 	/** Pausa prima che appaia il box «Traduzioni alternative» (dopo la traduzione principale) */
 	var LLS_ALTERNATIVES_APPEAR_DELAY_MS = 3000;
@@ -146,19 +142,22 @@
 	var LLS_AI_THINKING_PAUSE_MS = 2000;
 
 	/** Contenuto interno del pulsante microfono (traduzione + riscrittura) */
-	var LLS_MIC_BTN_INNER =
-		'<span class="lls-btn-mic-icon" aria-hidden="true">' +
-			'<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-				'<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>' +
-				'<path d="M19 10v2a7 7 0 0 1-14 0v-2"/>' +
-				'<line x1="12" y1="19" x2="12" y2="23"/>' +
-				'<line x1="8" y1="23" x2="16" y2="23"/>' +
-			'</svg>' +
-		'</span>' +
-		'<span class="lls-btn-mic-text">' +
-			'<span class="lls-btn-mic-label">Tieni premuto per pronunciare la frase…</span>' +
-			'<span class="lls-mic-hint">(È più efficace per imparare l\'inglese)</span>' +
-		'</span>';
+	function llsMicBtnInner() {
+		return (
+			'<span class="lls-btn-mic-icon" aria-hidden="true">' +
+				'<svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+					'<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>' +
+					'<path d="M19 10v2a7 7 0 0 1-14 0v-2"/>' +
+					'<line x1="12" y1="19" x2="12" y2="23"/>' +
+					'<line x1="8" y1="23" x2="16" y2="23"/>' +
+				'</svg>' +
+			'</span>' +
+			'<span class="lls-btn-mic-text">' +
+				'<span class="lls-btn-mic-label">' + escapeHtml(llsT('mic_label')) + '</span>' +
+				'<span class="lls-mic-hint">' + escapeHtml(llsT('mic_hint')) + '</span>' +
+			'</span>'
+		);
+	}
 
 	function tokenizeHtml(html) {
 		var tokens = [];
@@ -229,7 +228,7 @@
 		if (!$container || !$container.length) return;
 		$container.find('.lls-ai-thinking').remove();
 		var html =
-			'<div class="lls-ai-thinking lls-ai-thinking--in-stream" aria-live="polite" title="In elaborazione">' +
+			'<div class="lls-ai-thinking lls-ai-thinking--in-stream" aria-live="polite" title="' + escapeAttr(llsT('thinking_aria_title')) + '">' +
 				'<span class="lls-ai-thinking-cursor" aria-hidden="true"></span>' +
 			'</div>';
 		$container.append($(html));
@@ -264,14 +263,13 @@
 
 	/** Evita che un click breve o un reflow layout chiuda l’ascolto prima che parta il motore vocale */
 	var LLS_MIC_MIN_HOLD_MS = 320;
-	var LLS_MIC_FEEDBACK_DEFAULT = 'In ascolto…';
 
 	// Microfono: mantieni premuto per dettare (Web Speech API)
 	function setupMicButton($btn, $textarea) {
 		if (!$btn.length || !$textarea.length) return;
 		var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 		if (!SpeechRecognition) {
-			$btn.addClass('lls-mic-unavailable').prop('disabled', true).attr('title', 'Riconoscimento vocale non supportato');
+			$btn.addClass('lls-mic-unavailable').prop('disabled', true).attr('title', llsT('mic_unavailable_title'));
 			return;
 		}
 
@@ -290,7 +288,7 @@
 		}
 
 		function resetFeedbackText() {
-			$feedback.text(LLS_MIC_FEEDBACK_DEFAULT);
+			$feedback.text(llsT('mic_feedback_listening'));
 		}
 
 		function applyMicUi(active) {
@@ -340,11 +338,11 @@
 				if (err === 'no-speech') return;
 				var msg = null;
 				if (err === 'not-allowed' || err === 'service-not-allowed') {
-					msg = 'Microfono non consentito: controlla i permessi del sito nel browser.';
+					msg = llsT('mic_err_not_allowed');
 				} else if (err === 'network') {
-					msg = 'Errore di rete nel riconoscimento vocale. Riprova.';
+					msg = llsT('mic_err_network');
 				} else if (err === 'audio-capture') {
-					msg = 'Impossibile usare il microfono (nessuna sorgente audio).';
+					msg = llsT('mic_err_audio');
 				}
 				if (recognition === rec) {
 					recognition = null;
@@ -380,7 +378,7 @@
 					return;
 				}
 				tearDownRecognitionInstance();
-				$feedback.text('Impossibile avviare l’ascolto. Riprova tra un attimo.').addClass('lls-mic-feedback-visible');
+				$feedback.text(llsT('mic_err_start')).addClass('lls-mic-feedback-visible');
 				setTimeout(function () {
 					$feedback.removeClass('lls-mic-feedback-visible');
 					resetFeedbackText();
@@ -455,8 +453,8 @@
 	}
 
 	function confirmAndRestart() {
-		if (!confirm('Vuoi ricominciare la storia? Il tuo progresso verrà perso.')) return;
-		if (!confirm('Confermi? Dovrai ripartire dalla prima frase.')) return;
+		if (!confirm(llsT('confirm_restart_1'))) return;
+		if (!confirm(llsT('confirm_restart_2'))) return;
 		restartStory();
 	}
 
@@ -467,17 +465,17 @@
 		// Titolo e progresso
 		var pct = total ? Math.round((state.completedIndex / total) * 100) : 0;
 		var restartBtnHtml = state.completedIndex > 0
-			? '<button type="button" class="lls-restart-link" id="lls-btn-restart-header" aria-label="Ricomincia la storia">Ricomincia la storia</button>'
+			? '<button type="button" class="lls-restart-link" id="lls-btn-restart-header" aria-label="' + escapeAttr(llsT('restart_header_aria')) + '">' + escapeHtml(llsT('restart_header_link')) + '</button>'
 			: '';
 		var headerHtml =
 			'<div class="lls-header">' +
 				'<h1 class="lls-story-title">' + escapeHtml(data.title) + '</h1>' +
-				'<div class="lls-progress-label">Progresso della storia</div>' +
+				'<div class="lls-progress-label">' + escapeHtml(llsT('progress_label')) + '</div>' +
 				'<div class="lls-progress-bar-wrap">' +
 					'<div class="lls-progress-bar" style="width:' + pct + '%"></div>' +
 				'</div>' +
 				'<div class="lls-progress-row">' +
-					'<span class="lls-progress-counter">' + state.completedIndex + ' / ' + total + ' frasi completate' + (total ? ' - ' + pct + '%' : '') + '</span>' +
+					'<span class="lls-progress-counter">' + state.completedIndex + ' / ' + total + ' ' + escapeHtml(llsT('progress_phrases_done')) + (total ? ' - ' + pct + '%' : '') + '</span>' +
 					(restartBtnHtml ? '<span class="lls-header-actions">' + restartBtnHtml + '</span>' : '') +
 				'</div>' +
 			'</div>';
@@ -496,7 +494,7 @@
 		// Storia costruita
 		var builtContent = state.storyHtml;
 		if (!builtContent.trim()) {
-			builtContent = '<p class="lls-story-built-empty">La storia apparirà qui man mano che completi le frasi.</p>';
+			builtContent = '<p class="lls-story-built-empty">' + escapeHtml(llsT('story_empty')) + '</p>';
 		}
 		$root.append(
 			'<div class="lls-story-built">' + builtContent + '</div>'
@@ -508,9 +506,9 @@
 			$root.append(storyDividerHtml);
 			$root.append(
 				'<div class="lls-story-complete">' +
-					'<h2>Storia completata!</h2>' +
-					'<p>Hai tradotto tutte le ' + total + ' frasi. Complimenti!</p>' +
-					'<div class="lls-restart-wrap"><button type="button" class="lls-restart-btn" id="lls-btn-restart">Ricominciare la storia</button></div>' +
+					'<h2>' + escapeHtml(llsT('story_complete_title')) + '</h2>' +
+					'<p>' + escapeHtml(llsT('story_complete_message').replace('%d', String(total))) + '</p>' +
+					'<div class="lls-restart-wrap"><button type="button" class="lls-restart-btn" id="lls-btn-restart">' + escapeHtml(llsT('restart_story_button')) + '</button></div>' +
 				'</div>'
 			);
 			$('#lls-btn-restart').on('click', confirmAndRestart);
@@ -536,14 +534,14 @@
 				'<div class="lls-input-section">' +
 					'<div class="lls-input-wrap">' +
 						'<div class="lls-input-with-mic">' +
-							'<textarea id="lls-translation-input" placeholder="Scrivi o pronuncia la traduzione della prossima frase della storia" rows="4"></textarea>' +
+							'<textarea id="lls-translation-input" placeholder="' + escapeAttr(llsT('translation_placeholder')) + '" rows="4"></textarea>' +
 							'<div class="lls-mic-wrap">' +
-								'<button type="button" class="lls-btn-mic" id="lls-btn-mic" aria-label="Mantieni premuto per pronunciare la frase">' + LLS_MIC_BTN_INNER + '</button>' +
-								'<span class="lls-mic-feedback" aria-live="polite">In ascolto…</span>' +
+								'<button type="button" class="lls-btn-mic" id="lls-btn-mic" aria-label="' + escapeAttr(llsT('mic_aria_label')) + '">' + llsMicBtnInner() + '</button>' +
+								'<span class="lls-mic-feedback" aria-live="polite">' + escapeHtml(llsT('mic_feedback_listening')) + '</span>' +
 							'</div>' +
 						'</div>' +
 						'<div class="lls-continua-wrap">' +
-							'<button type="button" class="lls-btn lls-btn-continua" id="lls-btn-continua">Continua</button>' +
+							'<button type="button" class="lls-btn lls-btn-continua" id="lls-btn-continua">' + escapeHtml(llsT('continue_btn')) + '</button>' +
 							'<div class="lls-continue-feedback" aria-live="polite"></div>' +
 						'</div>' +
 					'</div>' +
@@ -557,7 +555,7 @@
 			// Prima "Prossima frase:" (carattere per carattere), poi 3s cursore, poi la frase italiana animata
 			var dNext = LLS_AI_CHAR_DELAY_MS;
 			var htmlPhrase = '<p>' + escapeHtml(current.text_it) + '</p>';
-			runTypewriterCharsWithFormatting($root.find('.lls-next-phrase-label-stream'), 'Prossima frase: ', dNext, function () {
+			runTypewriterCharsWithFormatting($root.find('.lls-next-phrase-label-stream'), llsT('next_phrase_prefix'), dNext, function () {
 				llsAfterThinkingThenNextPhrase($root, function () {
 					runTypewriterCharsWithFormatting($root.find('.lls-next-phrase-text'), htmlPhrase, dNext, function () {
 						var $wrap = $root.find('.lls-next-phrase-listenable-wrap').first();
@@ -580,11 +578,11 @@
 				var $fb = $root.find('.lls-continue-feedback');
 				$fb.removeClass('lls-continue-feedback-visible').text('');
 				if (!val) {
-					$fb.text(LLS_CONTINUE_FIRST_TRANSLATION_HINT).addClass('lls-continue-feedback-visible');
+					$fb.text(llsT('continue_first_hint')).addClass('lls-continue-feedback-visible');
 					return;
 				}
 				if (possibleTranslations.length && !llsUserWordOverlapAtLeast(val, possibleTranslations, 0.2)) {
-					$fb.text(LLS_CONTINUE_FIRST_TRANSLATION_HINT).addClass('lls-continue-feedback-visible');
+					$fb.text(llsT('continue_first_hint')).addClass('lls-continue-feedback-visible');
 					return;
 				}
 				state.userTranslation = val;
@@ -631,14 +629,14 @@
 				rewritePromptHtml +
 				'<div class="lls-input-wrap lls-initially-hidden">' +
 					'<div class="lls-input-with-mic">' +
-						'<textarea id="lls-rewrite-input" placeholder="Riscrivi o pronuncia la frase utilizzando una delle traduzioni consigliate" rows="3"></textarea>' +
+						'<textarea id="lls-rewrite-input" placeholder="' + escapeAttr(llsT('rewrite_placeholder')) + '" rows="3"></textarea>' +
 						'<div class="lls-mic-wrap">' +
-							'<button type="button" class="lls-btn-mic" id="lls-btn-mic-rewrite" aria-label="Mantieni premuto per pronunciare la frase">' + LLS_MIC_BTN_INNER + '</button>' +
-							'<span class="lls-mic-feedback" aria-live="polite">In ascolto…</span>' +
+							'<button type="button" class="lls-btn-mic" id="lls-btn-mic-rewrite" aria-label="' + escapeAttr(llsT('mic_aria_label')) + '">' + llsMicBtnInner() + '</button>' +
+							'<span class="lls-mic-feedback" aria-live="polite">' + escapeHtml(llsT('mic_feedback_listening')) + '</span>' +
 						'</div>' +
 					'</div>' +
 					'<div class="lls-rewrite-actions">' +
-						'<button type="button" class="lls-btn lls-btn-continua" id="lls-btn-continua-rewrite">Continua</button>' +
+						'<button type="button" class="lls-btn lls-btn-continua" id="lls-btn-continua-rewrite">' + escapeHtml(llsT('continue_btn')) + '</button>' +
 						'<div class="lls-continue-feedback" aria-live="polite"></div>' +
 						'<div class="lls-rewrite-success-box lls-initially-hidden">' +
 							'<div class="lls-ai-stream lls-rewrite-success-stream"></div>' +
@@ -723,8 +721,8 @@
 		// Sequenza: La tua risposta → titolo "Bravo, per questa frase ti consiglio di:" → pausa con cursore → consigli e resto
 		function runFeedbackAiSequence() {
 			var d = LLS_AI_CHAR_DELAY_MS;
-			var htmlYour = '<h4>La tua risposta</h4><p>' + escapeHtml(state.userTranslation) + '</p>';
-			var htmlBravoIntro = '<h4 class="lls-bravo-intro-title">Bravo, per questa frase ti consiglio di: </h4>';
+			var htmlYour = '<h4>' + escapeHtml(llsT('your_answer_title')) + '</h4><p>' + escapeHtml(state.userTranslation) + '</p>';
+			var htmlBravoIntro = '<h4 class="lls-bravo-intro-title">' + escapeHtml(llsT('bravo_intro_title')) + '</h4>';
 
 			$root.find('.lls-your-answer').addClass('lls-ai-box-active');
 			runTypewriterCharsWithFormatting($root.find('.lls-your-answer-stream'), htmlYour, d, function () {
@@ -754,7 +752,7 @@
 					$root.find('.lls-main-translation').addClass('lls-ai-box-active');
 					var $mainStream = $root.find('.lls-main-stream');
 					// Box + titolo subito; cursore nel corpo dove parte il paragrafo
-					$mainStream.html('<h4>Traduzione principale</h4><div class="lls-main-body-stream"></div>');
+					$mainStream.html('<h4>' + escapeHtml(llsT('main_translation_title')) + '</h4><div class="lls-main-body-stream"></div>');
 					var htmlMainBody = '<p>' + escapeHtml(mainTranslation) + '</p>';
 					var $mainBody = $mainStream.find('.lls-main-body-stream');
 					llsAfterThinkingIn($root, $mainBody, function () {
@@ -777,7 +775,7 @@
 						}).join('');
 						var dAlts = LLS_ALT_TYPEWRITER_CHAR_DELAY_MS;
 						$altStream.html(
-							'<h4>Traduzioni alternative</h4>' +
+							'<h4>' + escapeHtml(llsT('alternatives_title')) + '</h4>' +
 								'<div class="lls-alternatives-body-stream"></div>'
 						);
 						var $altBody = $altStream.find('.lls-alternatives-body-stream');
@@ -801,7 +799,7 @@
 				var hearBtnRw = llsHearMainTranslationButtonHtml(englishListenRw);
 				$rp.removeClass('lls-initially-hidden').addClass('lls-ai-box-active');
 				$rwStream.html(
-					'<h4>Ora riscrivi la frase dopo aver letto i consigli e le possibili varianti:</h4>' +
+					'<h4>' + escapeHtml(llsT('rewrite_title')) + '</h4>' +
 						'<div class="lls-rewrite-body-stream"></div>'
 				);
 				var $rwBody = $rwStream.find('.lls-rewrite-body-stream');
@@ -840,18 +838,18 @@
 			var $successStream = $root.find('.lls-rewrite-success-stream');
 			$fb.removeClass('lls-continue-feedback-visible').text('');
 			if (!val) {
-				$fb.text(LLS_CONTINUE_REWRITE_HINT).addClass('lls-continue-feedback-visible');
+				$fb.text(llsT('continue_rewrite_hint')).addClass('lls-continue-feedback-visible');
 					return;
 				}
 				if (possibleRewriteTranslations.length && !userTextMatchesOneTranslation(val, possibleRewriteTranslations)) {
-					$fb.text(LLS_CONTINUE_REWRITE_HINT).addClass('lls-continue-feedback-visible');
+					$fb.text(llsT('continue_rewrite_hint')).addClass('lls-continue-feedback-visible');
 				return;
 			}
 			if ($successBox.hasClass('lls-rewrite-success-started')) return;
 			$('#lls-btn-continua-rewrite').prop('disabled', true);
 			$successBox.addClass('lls-rewrite-success-started').removeClass('lls-initially-hidden').addClass('lls-just-visible');
 			var d = LLS_AI_CHAR_DELAY_MS;
-			runTypewriterCharsWithFormatting($successStream, LLS_REWRITE_SUCCESS_HTML, d, function () {
+			runTypewriterCharsWithFormatting($successStream, llsT('rewrite_success_html'), d, function () {
 				setTimeout(function () {
 					advanceStoryAfterRewrite();
 				}, LLS_REWRITE_SUCCESS_DELAY_MS);

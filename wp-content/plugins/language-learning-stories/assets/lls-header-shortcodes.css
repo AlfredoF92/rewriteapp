@@ -1,0 +1,44 @@
+/* Shortcode header: saluto e box giornalieri frasi completate */
+
+.lls-sc-greeting {
+	display: inline-block;
+	font-size: 0.95rem;
+	line-height: 1.4;
+}
+
+.lls-sc-greeting a {
+	text-decoration: underline;
+}
+
+.lls-sc-week {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 0.75rem;
+	align-items: flex-start;
+	justify-content: flex-start;
+	max-width: 100%;
+}
+
+.lls-sc-day {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	min-width: 3.25rem;
+	text-align: center;
+	font-size: 0.75rem;
+	line-height: 1.2;
+}
+
+.lls-sc-day__label {
+	display: block;
+	color: rgba(0, 0, 0, 0.55);
+	font-size: 0.65rem;
+	text-transform: capitalize;
+	margin-bottom: 0.15rem;
+}
+
+.lls-sc-day__count {
+	display: block;
+	font-weight: 600;
+	font-size: 0.85rem;
+}
