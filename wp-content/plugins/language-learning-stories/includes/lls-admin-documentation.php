@@ -27,6 +27,11 @@ function lls_get_admin_documentation_developer_groups() {
 				],
 				[
 					'reference_only' => true,
+					'title'          => __( 'Amministrazione: lista utenti', 'language-learning-stories' ),
+					'intro'          => __( 'Sotto il menu Storie è disponibile «Lista utenti» (capability list_users): elenco degli ultimi iscritti con frasi completate, lingue e saldo coin; la scheda utente riassume impostazioni LLS, registro coin, storie sbloccate, progresso per storia e ultime frasi dal log (stessi dati usati dagli shortcode profilo / cronologia). Implementazione: includes/lls-admin-users-list.php.', 'language-learning-stories' ),
+				],
+				[
+					'reference_only' => true,
 					'title'          => __( 'Modello dati: WordPress', 'language-learning-stories' ),
 					'intro'          => __( 'Le storie sono righe in `wp_posts` con `post_type = lls_story`. Termini e relazioni sono in `wp_terms`, `wp_term_taxonomy`, `wp_term_relationships` per le tassonomie registrate sul CPT. Le opzioni del plugin (stringhe UI, menu footer, testi login intro) vivono in `wp_options`.', 'language-learning-stories' ),
 					'code_blocks'    => [
@@ -113,7 +118,8 @@ function lls_get_admin_documentation_developer_groups() {
 								. "lls-story-cards-rail-shortcode.php — Fascia orizzontale storie\n"
 								. "lls-elementor-dynamic-tags.php — Tag dinamici per Loop/singole\n"
 								. "lls-elementor-global-fonts.php — Tipografia kit Elementor (caricato su elementor/loaded)\n"
-								. "lls-login-*.php, lls-register-*.php, lls-require-login-*.php, lls-login-intro-*.php — Auth front-end\n",
+								. "lls-login-*.php, lls-register-*.php, lls-require-login-*.php, lls-login-intro-*.php — Auth front-end\n"
+								. "lls-admin-users-list.php     — Lista utenti e scheda (admin Storie)\n",
 						],
 					],
 					'ex'             => [],

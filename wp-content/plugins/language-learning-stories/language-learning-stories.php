@@ -28,6 +28,7 @@ require_once __DIR__ . '/includes/lls-login-intro-settings.php';
 require_once __DIR__ . '/includes/lls-login-intro-shortcodes.php';
 require_once __DIR__ . '/includes/lls-require-login-shortcodes.php';
 require_once __DIR__ . '/includes/lls-register-shortcodes.php';
+require_once __DIR__ . '/includes/lls-admin-users-list.php';
 
 add_action(
 	'elementor/loaded',
