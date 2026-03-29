@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Language Learning Stories
  * Description: Gestione storie con frasi, traduzioni e immagini per esercizi di traduzione.
- * Version:     0.2.1
+ * Version:     0.2.2
  * Author:      ReadWrite
  * Text Domain: language-learning-stories
  */
@@ -25,7 +25,7 @@ require_once __DIR__ . '/includes/lls-login-intro-shortcodes.php';
 require_once __DIR__ . '/includes/lls-require-login-shortcodes.php';
 require_once __DIR__ . '/includes/lls-register-shortcodes.php';
 
-define( 'LLS_PLUGIN_VERSION', '0.2.1' );
+define( 'LLS_PLUGIN_VERSION', '0.2.2' );
 
 class LLS_Plugin {
 
@@ -58,6 +58,7 @@ class LLS_Plugin {
 		add_action( 'admin_post_lls_save_footer_app_nav_settings', [ $this, 'handle_save_footer_app_nav_settings' ] );
 		add_action( 'admin_post_lls_save_login_intro_settings', [ $this, 'handle_save_login_intro_settings' ] );
 		add_action( 'admin_post_lls_update_user_profile', [ $this, 'handle_update_user_profile' ] );
+		add_action( 'admin_post_lls_save_user_learn_lang', [ $this, 'handle_save_user_learn_target_lang' ] );
 
 		add_filter( 'manage_lls_story_posts_columns', [ $this, 'story_list_columns' ] );
 		add_action( 'manage_lls_story_posts_custom_column', [ $this, 'story_list_column_content' ], 10, 2 );
@@ -686,6 +687,38 @@ class LLS_Plugin {
 	}
 
 	/**
+	 * Salva la lingua che l’utente vuole imparare (user meta, filtro libreria).
+	 */
+	public function handle_save_user_learn_target_lang() {
+		if ( ! is_user_logged_in() ) {
+			wp_die( esc_html__( 'You must be logged in.', 'language-learning-stories' ) );
+		}
+
+		$user_id = get_current_user_id();
+		$referer = isset( $_POST['_wp_http_referer'] ) ? wp_unslash( $_POST['_wp_http_referer'] ) : '';
+		$redirect = $referer ? wp_validate_redirect( esc_url_raw( $referer ), home_url( '/' ) ) : home_url( '/' );
+		$redirect = remove_query_arg( [ 'lls_edit_learn_lang', 'lls_learn_lang' ], $redirect );
+
+		$nonce = isset( $_POST['lls_learn_lang_nonce'] ) ? wp_unslash( $_POST['lls_learn_lang_nonce'] ) : '';
+		if ( ! wp_verify_nonce( $nonce, 'lls_save_user_learn_lang' ) ) {
+			wp_safe_redirect( add_query_arg( 'lls_learn_lang', 'err_nonce', $redirect ) );
+			exit;
+		}
+
+		$code = isset( $_POST['lls_user_learn_target_lang'] ) ? sanitize_text_field( wp_unslash( $_POST['lls_user_learn_target_lang'] ) ) : 'en';
+		if ( ! function_exists( 'lls_story_target_lang_codes' ) || ! in_array( $code, lls_story_target_lang_codes(), true ) ) {
+			$code = 'en';
+		}
+
+		if ( function_exists( 'lls_user_learn_target_lang_meta_key' ) ) {
+			update_user_meta( $user_id, lls_user_learn_target_lang_meta_key(), $code );
+		}
+
+		wp_safe_redirect( add_query_arg( 'lls_learn_lang', 'ok', $redirect ) );
+		exit;
+	}
+
+	/**
 	 * Pagina amministrativa: tutte le stringhe per lingua.
 	 */
 	public function render_translations_page() {
@@ -841,16 +874,31 @@ class LLS_Plugin {
 						'attrs'  => [],
 						'ex'     => [ '[lls_header_daily_phrases]' ],
 					],
+					[
+						'tag'    => 'lls_header_learn_language',
+						'title'  => __( 'Lingua da imparare (header)', 'language-learning-stories' ),
+						'intro'  => __( 'Mostra il nome della lingua che l’utente vuole imparare (stessa scelta di [lls_profile_learn_language], funzione lls_get_user_learn_target_lang). Per gli ospiti: inglese. Output compatto (display: contents) adatto affianco al saluto.', 'language-learning-stories' ),
+						'where'  => __( 'Header o barra superiore insieme a [lls_header_greeting].', 'language-learning-stories' ),
+						'attrs'  => [
+							[
+								'name'     => 'prefix',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'Testo opzionale davanti al nome lingua (es. «Studio: »). Vuoto = solo il nome.', 'language-learning-stories' ),
+								'help'     => '',
+							],
+						],
+						'ex'     => [ '[lls_header_learn_language]', '[lls_header_learn_language prefix="Studio: "]' ],
+					],
 				],
 			],
 			[
 				'group_title' => __( 'Shortcode per libreria', 'language-learning-stories' ),
-				'group_intro' => __( 'Pagina dove l’utente sfoglia tutte le storie disponibili nella sua lingua interfaccia (meta _lls_known_lang allineata al profilo o all’attributo lang).', 'language-learning-stories' ),
+				'group_intro' => __( 'Pagina dove l’utente sfoglia le storie filtrate per lingua interfaccia (_lls_known_lang) e per lingua da imparare (_lls_target_lang). Profilo: lls_get_user_known_lang() e lls_get_user_learn_target_lang(). Ospiti: interfaccia italiano, obiettivo inglese.', 'language-learning-stories' ),
 				'sections'    => [
 					[
 						'tag'    => 'lls_library_stories',
-						'title'  => __( 'Elenco storie (lingua interfaccia)', 'language-learning-stories' ),
-						'intro'  => __( 'Elenco delle storie pubblicate il cui _lls_known_lang coincide con la «lingua che conosci» del profilo (funzione lls_get_user_known_lang): per ospiti si assume italiano. Include anche storie senza meta o con valore vuoto se la lingua è italiano (come nel resto del plugin). Stesso layout di [lls_profile_continue_stories]: titolo, categorie e tag, trama, barra progresso se l’utente è connesso, pulsante «Continue story». Ordine: ultima modifica decrescente. Filtro opzionale: lls_meta_query_stories_for_interface_lang.', 'language-learning-stories' ),
+						'title'  => __( 'Elenco storie (interfaccia + lingua da imparare)', 'language-learning-stories' ),
+						'intro'  => __( 'Elenco delle storie pubblicate che soddisfano entrambi i filtri: _lls_known_lang (profilo o attributo lang; per ospiti italiano, con le stesse eccezioni «senza meta» del plugin) e _lls_target_lang (user meta da [lls_profile_learn_language] o attributo learn_lang; per ospiti inglese). Funzioni: lls_meta_query_stories_for_library(). Stesso layout di [lls_profile_continue_stories]. Ordine: ultima modifica decrescente.', 'language-learning-stories' ),
 						'where'  => __( 'Pagina dedicata alla libreria (es. slug /libreria/) o qualsiasi contenuto dove vuoi l’elenco completo filtrato per lingua.', 'language-learning-stories' ),
 						'attrs'  => [
 							[
@@ -869,16 +917,22 @@ class LLS_Plugin {
 								'name'     => 'lang',
 								'required' => __( 'No', 'language-learning-stories' ),
 								'values'   => 'it, pl, es',
-								'help'     => __( 'Forza una lingua invece di usare il profilo. Vuoto = profilo (o it per ospiti).', 'language-learning-stories' ),
+								'help'     => __( 'Forza la lingua interfaccia. Vuoto = profilo (o it per ospiti).', 'language-learning-stories' ),
+							],
+							[
+								'name'     => 'learn_lang',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'en, pl, it, es (stessi codici della storia). Vuoto = lls_get_user_learn_target_lang() o en per ospiti.', 'language-learning-stories' ),
+								'help'     => __( 'Forza la lingua da imparare senza cambiare il profilo.', 'language-learning-stories' ),
 							],
 							[
 								'name'     => 'show_lang',
 								'required' => __( 'No', 'language-learning-stories' ),
-								'values'   => '1 (predefinito), 0 o false per nascondere la riga «Stories for: …».',
-								'help'     => __( 'Mostra sopra l’elenco la lingua usata per il filtro.', 'language-learning-stories' ),
+								'values'   => '1 (predefinito), 0 o false per nascondere la riga riepilogo filtri.',
+								'help'     => __( 'Mostra sopra l’elenco interfaccia e lingua da imparare usate per la query.', 'language-learning-stories' ),
 							],
 						],
-						'ex'     => [ '[lls_library_stories]', '[lls_library_stories limit="5" words="30"]', '[lls_library_stories limit="30" words="30" show_lang="0"]' ],
+						'ex'     => [ '[lls_library_stories]', '[lls_library_stories learn_lang="pl"]', '[lls_library_stories limit="30" words="30" show_lang="0"]' ],
 					],
 				],
 			],
@@ -1007,6 +1061,14 @@ class LLS_Plugin {
 						'ex'     => [ '[lls_profile_continue_stories]', '[lls_profile_continue_stories limit="5" words="30"]' ],
 					],
 					[
+						'tag'    => 'lls_profile_learn_language',
+						'title'  => __( 'Lingua che voglio imparare', 'language-learning-stories' ),
+						'intro'  => __( 'Mostra la lingua obiettivo (user meta _lls_user_learn_target_lang): link testuale «(Edit)» sottolineato accanto al nome lingua apre il select senza ricaricare; «Salva» (.lls-btn brand) invia il modulo e ricarica; «Annulla» torna in lettura. Ospiti: messaggio e login; libreria it + en.', 'language-learning-stories' ),
+						'where'  => __( 'Pagina area personale, sopra o vicino alla libreria.', 'language-learning-stories' ),
+						'attrs'  => [],
+						'ex'     => [ '[lls_profile_learn_language]' ],
+					],
+					[
 						'tag'    => 'lls_completed_phrases',
 						'title'  => __( 'Cronologia frasi completate', 'language-learning-stories' ),
 						'intro'  => __( 'Lista: frase in inglese (traduzione) con pulsante ascolto (sintesi vocale), sotto in piccolo l’italiano; titolo storia con link, categorie e tag. Solo utenti connessi. Ordine dal più recente (timestamp interno). Limite voci: filtro lls_max_completed_phrases_log (predefinito 2000).', 'language-learning-stories' ),
@@ -1039,7 +1101,7 @@ class LLS_Plugin {
 			],
 			[
 				'group_title' => __( 'Shortcode per footer (navigazione app)', 'language-learning-stories' ),
-				'group_intro' => __( 'Barra orizzontale da widget footer o contenuto pagina: quattro voci con lettera grande (L, C, simbolo riproduzione per Play, P) e sotto l’etichetta. Link predefiniti: /library/, /community/, /play/, /area-personale/. Evidenziazione voce corrente in base all’URL.', 'language-learning-stories' ),
+				'group_intro' => __( 'Barra orizzontale da widget footer o contenuto pagina: quattro voci con lettera grande (L, C, simbolo riproduzione per Play, P) e sotto l’etichetta; oppure riepilogo lingue interfaccia / da imparare. Link predefiniti menu: /library/, /community/, /play/, /area-personale/.', 'language-learning-stories' ),
 				'sections'    => [
 					[
 						'tag'    => 'lls_footer_app_nav',
@@ -1073,6 +1135,21 @@ class LLS_Plugin {
 							],
 						],
 						'ex'     => [ '[lls_footer_app_nav]', '[lls_footer_app_nav profile_path="area-personale"]' ],
+					],
+					[
+						'tag'    => 'lls_footer_lang_summary',
+						'title'  => __( 'Riepilogo lingue (footer)', 'language-learning-stories' ),
+						'intro'  => __( 'Solo i nomi delle due lingue in una riga (es. Italian → English), separate da sep. Valori da lls_get_user_known_lang e lls_get_user_learn_target_lang (etichette come in profilo). Ospiti: italiano → inglese. Per accessibilità: aria-label con spiegazione.', 'language-learning-stories' ),
+						'where'  => __( 'Widget footer, sopra o sotto [lls_footer_app_nav], o footer.php.', 'language-learning-stories' ),
+						'attrs'  => [
+							[
+								'name'     => 'sep',
+								'required' => __( 'No', 'language-learning-stories' ),
+								'values'   => __( 'Testo separatore tra le due parti. Predefinito: carattere freccia →. Esempio: --&gt; per due trattini e maggiore.', 'language-learning-stories' ),
+								'help'     => __( 'Attributo sep="-->" se preferisci quella notazione.', 'language-learning-stories' ),
+							],
+						],
+						'ex'     => [ '[lls_footer_lang_summary]', '[lls_footer_lang_summary sep="-->"]' ],
 					],
 				],
 			],
@@ -2096,6 +2173,14 @@ class LLS_Plugin {
 		wp_register_script(
 			'lls-profile-account',
 			$plugin_url . 'assets/lls-profile-account.js',
+			[],
+			LLS_PLUGIN_VERSION,
+			true
+		);
+
+		wp_register_script(
+			'lls-profile-learn-lang',
+			$plugin_url . 'assets/lls-profile-learn-lang.js',
 			[],
 			LLS_PLUGIN_VERSION,
 			true

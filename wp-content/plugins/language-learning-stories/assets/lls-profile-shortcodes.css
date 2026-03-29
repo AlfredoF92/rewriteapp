@@ -72,6 +72,128 @@
 	line-height: 1.45;
 }
 
+/* [lls_profile_learn_language] */
+.lls-profile-learn-lang {
+	margin-bottom: 1.25rem;
+}
+
+.lls-profile-learn-lang__line {
+	margin: 0;
+	font-size: 1rem;
+	line-height: 1.5;
+	color: var(--lls-ink, #2c2c2c);
+}
+
+.lls-profile-learn-lang__label {
+	margin-right: 0.35rem;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
+.lls-profile-learn-lang__value {
+	font-weight: 600;
+	margin-right: 0.15rem;
+}
+
+/* «(Edit)» inline come link, non pulsante blocco */
+.lls-shortcodes .lls-profile-learn-lang__btn-edit {
+	display: inline;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	box-shadow: none;
+	font: inherit;
+	font-size: inherit;
+	font-weight: inherit;
+	line-height: inherit;
+	color: var(--lls-ink-soft, #4a4a4a);
+	text-decoration: underline;
+	text-underline-offset: 0.15em;
+	cursor: pointer;
+	vertical-align: baseline;
+}
+
+.lls-shortcodes .lls-profile-learn-lang__btn-edit:hover {
+	color: var(--lls-ink, #2c2c2c);
+}
+
+.lls-shortcodes .lls-profile-learn-lang__btn-edit:focus {
+	outline: none;
+}
+
+.lls-shortcodes .lls-profile-learn-lang__btn-edit:focus-visible {
+	outline: 2px solid var(--lls-ink-soft, #4a4a4a);
+	outline-offset: 3px;
+	border-radius: 2px;
+}
+
+.lls-profile-learn-lang__text {
+	margin: 0 0 0.75rem;
+	color: var(--lls-ink-soft, #4a4a4a);
+	line-height: 1.5;
+}
+
+.lls-profile-learn-lang__field {
+	margin: 0 0 1rem;
+}
+
+.lls-profile-learn-lang__field-label {
+	display: block;
+	margin-bottom: 0.35rem;
+	font-weight: 600;
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-profile-learn-lang__form-actions {
+	margin: 0;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.75rem 1.25rem;
+}
+
+.lls-profile-learn-lang__cancel {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	background: none;
+	cursor: pointer;
+	font-family: var(--lls-font, "Manrope", "Segoe UI", Arial, sans-serif);
+	font-size: 0.92rem;
+	font-weight: inherit;
+	color: var(--lls-ink-soft, #4a4a4a);
+	text-decoration: underline;
+	text-underline-offset: 0.12em;
+}
+
+.lls-profile-learn-lang__cancel:hover {
+	color: var(--lls-ink, #2c2c2c);
+}
+
+.lls-profile-learn-lang__cancel:focus-visible {
+	outline: 2px solid var(--lls-ink-soft, #4a4a4a);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+.lls-profile-learn-lang__notice {
+	margin: 0 0 0.75rem;
+	padding: 0.65rem 0.85rem;
+	border-radius: 6px;
+	font-size: 0.92rem;
+	line-height: 1.45;
+}
+
+.lls-profile-learn-lang__notice--ok {
+	background: rgba(34, 160, 80, 0.12);
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-profile-learn-lang__notice--err {
+	background: rgba(200, 60, 60, 0.12);
+	color: var(--lls-ink, #1a1a1a);
+}
+
 /* Modulo dati account */
 .lls-shortcodes .lls-profile-account__view {
 	display: block;
@@ -206,11 +328,27 @@
 	max-width: 28rem;
 	box-sizing: border-box;
 	padding: 0.55rem 0.65rem;
-	font: inherit;
-	border: 1px solid rgba(0, 0, 0, 0.18);
+	font-family: var(--lls-font, "Manrope", "Segoe UI", Arial, sans-serif);
+	font-size: inherit;
+	font-weight: inherit;
+	line-height: 1.45;
+	border: 1px solid rgba(44, 44, 44, 0.22);
 	border-radius: 6px;
-	background: #fff;
-	color: var(--lls-ink, #1a1a1a);
+	background: var(--lls-paper, #faf8f5);
+	color: var(--lls-ink, #2c2c2c);
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.lls-shortcodes .lls-profile-account__input:focus,
+.lls-shortcodes .lls-profile-account__select:focus {
+	outline: none;
+	border-color: rgba(44, 44, 44, 0.38);
+}
+
+.lls-shortcodes .lls-profile-account__input:focus-visible,
+.lls-shortcodes .lls-profile-account__select:focus-visible {
+	outline: 2px solid var(--lls-ink-soft, #4a4a4a);
+	outline-offset: 2px;
 }
 
 .lls-shortcodes .lls-profile-account__select {

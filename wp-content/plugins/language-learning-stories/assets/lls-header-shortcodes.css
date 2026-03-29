@@ -35,6 +35,23 @@
 	color: rgba(255, 255, 255, 0.92) !important;
 }
 
+.lls-sc-learn-lang {
+	display: inline;
+	line-height: 1.35;
+	font-size: clamp(0.95rem, 2.2vw, 1.15rem);
+	font-weight: 300;
+	color: #fff;
+}
+
+.lls-sc-learn-lang__prefix {
+	opacity: 0.88;
+	margin-right: 0.15em;
+}
+
+.lls-sc-learn-lang__name {
+	font-weight: 600;
+}
+
 .lls-sc-week {
 	display: flex;
 	flex-wrap: wrap;

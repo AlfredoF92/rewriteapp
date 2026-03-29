@@ -191,10 +191,62 @@ function lls_shortcode_footer_app_nav( $atts ) {
 	return $html;
 }
 
+/**
+ * Shortcode footer: solo nomi lingua interfaccia → lingua da imparare.
+ *
+ * Uso: [lls_footer_lang_summary] oppure [lls_footer_lang_summary sep="-->"]
+ *
+ * Ospiti: italiano → inglese (stessi default di libreria e profilo).
+ *
+ * @param string[]|string $atts Attributi shortcode.
+ * @return string
+ */
+function lls_shortcode_footer_lang_summary( $atts ) {
+	$atts = shortcode_atts(
+		[
+			'sep' => '→',
+		],
+		is_array( $atts ) ? $atts : [],
+		'lls_footer_lang_summary'
+	);
+
+	$iface_code = function_exists( 'lls_get_user_known_lang' ) ? lls_get_user_known_lang() : 'it';
+	$learn_code = function_exists( 'lls_get_user_learn_target_lang' ) ? lls_get_user_learn_target_lang() : 'en';
+
+	$labels_iface = function_exists( 'lls_get_known_lang_choice_labels' ) ? lls_get_known_lang_choice_labels() : [];
+	$labels_learn = function_exists( 'lls_get_story_target_lang_choice_labels' ) ? lls_get_story_target_lang_choice_labels() : [];
+
+	$iface_name = isset( $labels_iface[ $iface_code ] ) ? $labels_iface[ $iface_code ] : $iface_code;
+	$learn_name = isset( $labels_learn[ $learn_code ] ) ? $labels_learn[ $learn_code ] : $learn_code;
+
+	$sep = (string) $atts['sep'];
+	if ( $sep === '' ) {
+		$sep = '→';
+	}
+
+	$aria_label = sprintf(
+		/* translators: 1: interface language name, 2: language to learn name */
+		__( 'Interface language %1$s, language to learn %2$s', 'language-learning-stories' ),
+		$iface_name,
+		$learn_name
+	);
+
+	ob_start();
+	?>
+	<div class="lls-shortcodes lls-footer-lang-summary" role="status" aria-label="<?php echo esc_attr( $aria_label ); ?>">
+		<span class="lls-footer-lang-summary__lang"><?php echo esc_html( $iface_name ); ?></span>
+		<span class="lls-footer-lang-summary__arrow" aria-hidden="true"><?php echo esc_html( $sep ); ?></span>
+		<span class="lls-footer-lang-summary__lang"><?php echo esc_html( $learn_name ); ?></span>
+	</div>
+	<?php
+	return (string) ob_get_clean();
+}
+
 add_action(
 	'init',
 	static function () {
 		add_shortcode( 'lls_footer_app_nav', 'lls_shortcode_footer_app_nav' );
+		add_shortcode( 'lls_footer_lang_summary', 'lls_shortcode_footer_lang_summary' );
 	},
 	12
 );

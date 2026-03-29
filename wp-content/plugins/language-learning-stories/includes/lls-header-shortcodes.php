@@ -193,10 +193,43 @@ function lls_shortcode_header_daily_phrases() {
 	return lls_wrap_shortcode_html( '<div class="lls-sc-week">' . $days_html . '</div>', 'block' );
 }
 
+/**
+ * Shortcode: lingua che l’utente vuole imparare (stessa di [lls_profile_learn_language]).
+ *
+ * Uso: [lls_header_learn_language] oppure [lls_header_learn_language prefix="Studio: "]
+ *
+ * @param string[]|string $atts Attributi shortcode.
+ * @return string
+ */
+function lls_shortcode_header_learn_language( $atts = [] ) {
+	$atts = shortcode_atts(
+		[
+			'prefix' => '',
+		],
+		is_array( $atts ) ? $atts : [],
+		'lls_header_learn_language'
+	);
+
+	$code = function_exists( 'lls_get_user_learn_target_lang' ) ? lls_get_user_learn_target_lang() : 'en';
+	$labels = function_exists( 'lls_get_story_target_lang_choice_labels' ) ? lls_get_story_target_lang_choice_labels() : [];
+	$name   = isset( $labels[ $code ] ) ? $labels[ $code ] : $code;
+	$prefix = trim( (string) $atts['prefix'] );
+
+	$inner = '<span class="lls-sc-learn-lang">';
+	if ( $prefix !== '' ) {
+		$inner .= '<span class="lls-sc-learn-lang__prefix">' . esc_html( $prefix ) . '</span> ';
+	}
+	$inner .= '<span class="lls-sc-learn-lang__name">' . esc_html( $name ) . '</span>';
+	$inner .= '</span>';
+
+	return lls_wrap_shortcode_html( $inner, 'contents' );
+}
+
 add_action(
 	'init',
 	static function () {
 		add_shortcode( 'lls_header_greeting', 'lls_shortcode_header_greeting' );
 		add_shortcode( 'lls_header_daily_phrases', 'lls_shortcode_header_daily_phrases' );
+		add_shortcode( 'lls_header_learn_language', 'lls_shortcode_header_learn_language' );
 	}
 );

@@ -146,3 +146,35 @@ nav.lls-app-footer-nav.lls-shortcodes {
 	background-color: transparent !important;
 	box-shadow: none !important;
 }
+
+/* [lls_footer_lang_summary] — solo nomi lingua, es. Italian → English */
+.lls-shortcodes.lls-footer-lang-summary {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: center;
+	gap: 0.35rem 0.55rem;
+	width: 100%;
+	max-width: 42rem;
+	margin: 0 auto;
+	padding: 0.45rem 0.75rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+	box-sizing: border-box;
+	font-family: var(--lls-font);
+	font-size: clamp(0.78rem, 2.3vw, 0.92rem);
+	font-weight: 300;
+	line-height: 1.5;
+	color: var(--lls-ink, #2c2c2c);
+	text-align: center;
+}
+
+.lls-footer-lang-summary__lang {
+	font-weight: 600;
+}
+
+.lls-footer-lang-summary__arrow {
+	flex-shrink: 0;
+	padding: 0 0.1rem;
+	color: var(--lls-ink-soft, #4a4a4a);
+	font-weight: 600;
+	opacity: 0.95;
+}

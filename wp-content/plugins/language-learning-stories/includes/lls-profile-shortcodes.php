@@ -364,6 +364,97 @@ function lls_meta_query_stories_for_interface_lang( $lang ) {
 }
 
 /**
+ * Normalizza un frammento meta_query (gruppo con relation o singola clausola) per usarlo come figlio di un AND.
+ *
+ * @param array<string, mixed> $fragment Output di {@see lls_meta_query_stories_for_interface_lang()} o learn target.
+ * @return array<string, mixed>
+ */
+function lls_meta_query_fragment_as_clause( $fragment ) {
+	if ( ! is_array( $fragment ) ) {
+		return [];
+	}
+	if ( isset( $fragment['relation'] ) && is_string( $fragment['relation'] ) ) {
+		return $fragment;
+	}
+	if ( isset( $fragment[0] ) && is_array( $fragment[0] ) && count( $fragment ) === 1 ) {
+		return $fragment[0];
+	}
+	return $fragment;
+}
+
+/**
+ * Meta query: storie per lingua da imparare (_lls_target_lang).
+ * Per «en» include anche storie senza meta o vuote (come {@see lls_get_story_target_lang()}).
+ *
+ * @param string $code Codice en|pl|it|es.
+ * @return array<string, mixed>
+ */
+function lls_meta_query_stories_for_learn_target_lang( $code ) {
+	if ( ! function_exists( 'lls_story_target_lang_codes' ) ) {
+		return [];
+	}
+	$code = in_array( $code, lls_story_target_lang_codes(), true ) ? $code : 'en';
+	if ( 'en' === $code ) {
+		$query = [
+			'relation' => 'OR',
+			[
+				'key'     => '_lls_target_lang',
+				'compare' => 'NOT EXISTS',
+			],
+			[
+				'key'     => '_lls_target_lang',
+				'value'   => '',
+				'compare' => '=',
+			],
+			[
+				'key'   => '_lls_target_lang',
+				'value' => 'en',
+			],
+		];
+	} else {
+		$query = [
+			[
+				'key'   => '_lls_target_lang',
+				'value' => $code,
+			],
+		];
+	}
+	/**
+	 * Filtro: meta_query per elenco storie per lingua da imparare (libreria).
+	 *
+	 * @param array  $query Meta query costruita.
+	 * @param string $code  Codice lingua obiettivo.
+	 */
+	return apply_filters( 'lls_meta_query_stories_for_learn_target_lang', $query, $code );
+}
+
+/**
+ * Combina filtri interfaccia e lingua da imparare per {@see WP_Query} (relation AND).
+ *
+ * @param string $interface_lang Codice it|pl|es.
+ * @param string $learn_code     Codice en|pl|it|es.
+ * @return array<string, mixed>
+ */
+function lls_meta_query_stories_for_library( $interface_lang, $learn_code ) {
+	$i = lls_meta_query_fragment_as_clause( lls_meta_query_stories_for_interface_lang( $interface_lang ) );
+	$t = lls_meta_query_fragment_as_clause( lls_meta_query_stories_for_learn_target_lang( $learn_code ) );
+	if ( empty( $i ) && empty( $t ) ) {
+		return [];
+	}
+	if ( empty( $i ) ) {
+		return $t;
+	}
+	if ( empty( $t ) ) {
+		return $i;
+	}
+	return [
+		'relation' => 'AND',
+		$i,
+		$t,
+	];
+}
+
+/**
  * HTML di un elemento elenco storia (stesso markup di [lls_profile_continue_stories]).
  *
  * @param WP_Post          $post         Post storia.
@@ -652,7 +743,9 @@ function lls_shortcode_profile_continue_stories( $atts ) {
 }
 
 /**
- * Shortcode: libreria — tutte le storie pubblicate per la lingua interfaccia scelta dall’utente (o attributo lang).
+ * Shortcode: libreria — storie per lingua interfaccia (_lls_known_lang) e lingua da imparare (_lls_target_lang).
+ *
+ * Ospiti: interfaccia italiano, obiettivo inglese. Utenti loggati: profilo e {@see lls_get_user_learn_target_lang()}.
  *
  * Uso: [lls_library_stories limit="50" words="40"]
  *
@@ -662,10 +755,11 @@ function lls_shortcode_profile_continue_stories( $atts ) {
 function lls_shortcode_library_stories( $atts ) {
 	$atts = shortcode_atts(
 		[
-			'limit'     => '50',
-			'words'     => '40',
-			'lang'      => '',
-			'show_lang' => '1',
+			'limit'      => '50',
+			'words'      => '40',
+			'lang'       => '',
+			'learn_lang' => '',
+			'show_lang'  => '1',
 		],
 		is_array( $atts ) ? $atts : [],
 		'lls_library_stories'
@@ -681,7 +775,14 @@ function lls_shortcode_library_stories( $atts ) {
 		$lang = 'it';
 	}
 
-	$meta_query = lls_meta_query_stories_for_interface_lang( $lang );
+	$learn = trim( (string) $atts['learn_lang'] );
+	if ( $learn === '' ) {
+		$learn = function_exists( 'lls_get_user_learn_target_lang' ) ? lls_get_user_learn_target_lang() : 'en';
+	} elseif ( function_exists( 'lls_story_target_lang_codes' ) && ! in_array( $learn, lls_story_target_lang_codes(), true ) ) {
+		$learn = 'en';
+	}
+
+	$meta_query = lls_meta_query_stories_for_library( $lang, $learn );
 	$query_args = [
 		'post_type'              => 'lls_story',
 		'post_status'            => 'publish',
@@ -728,24 +829,112 @@ function lls_shortcode_library_stories( $atts ) {
 
 	if ( $items_html === '' ) {
 		$inner = '<div class="lls-profile-continue lls-library-stories lls-library-stories--empty"><p>' .
-			esc_html__( 'No published stories match this interface language yet.', 'language-learning-stories' ) .
+			esc_html__( 'No published stories match these filters yet (interface language and language to learn).', 'language-learning-stories' ) .
 			'</p></div>';
 		return function_exists( 'lls_wrap_shortcode_html' ) ? lls_wrap_shortcode_html( $inner, 'block' ) : $inner;
 	}
 
 	$intro = '';
 	if ( '1' === $atts['show_lang'] || 'true' === $atts['show_lang'] ) {
-		$labels = function_exists( 'lls_get_known_lang_choice_labels' ) ? lls_get_known_lang_choice_labels() : [];
-		$label  = isset( $labels[ $lang ] ) ? $labels[ $lang ] : $lang;
-		$intro  = '<p class="lls-library-stories__lang-note">' . sprintf(
-			/* translators: %s: language name, e.g. Italian */
-			esc_html__( 'Stories for: %s', 'language-learning-stories' ),
-			esc_html( $label )
+		$labels_iface = function_exists( 'lls_get_known_lang_choice_labels' ) ? lls_get_known_lang_choice_labels() : [];
+		$labels_learn = function_exists( 'lls_get_story_target_lang_choice_labels' ) ? lls_get_story_target_lang_choice_labels() : [];
+		$iface_label  = isset( $labels_iface[ $lang ] ) ? $labels_iface[ $lang ] : $lang;
+		$learn_label  = isset( $labels_learn[ $learn ] ) ? $labels_learn[ $learn ] : $learn;
+		$intro        = '<p class="lls-library-stories__lang-note">' . sprintf(
+			/* translators: 1: interface language name, 2: target / language to learn name */
+			esc_html__( 'Stories — interface: %1$s · language to learn: %2$s', 'language-learning-stories' ),
+			esc_html( $iface_label ),
+			esc_html( $learn_label )
 		) . '</p>';
 	}
 
 	$out = '<div class="lls-profile-continue lls-library-stories">' . $intro . '<ul class="lls-profile-continue__list">' . $items_html . '</ul></div>';
 	return function_exists( 'lls_wrap_shortcode_html' ) ? lls_wrap_shortcode_html( $out, 'block' ) : $out;
+}
+
+/**
+ * Shortcode: scegli la lingua che vuoi imparare (salvata in user meta; filtra la libreria).
+ *
+ * Uso: [lls_profile_learn_language]
+ *
+ * @param string[]|string $atts Attributi shortcode.
+ * @return string
+ */
+function lls_shortcode_profile_learn_language( $atts ) {
+	$atts = shortcode_atts( [], is_array( $atts ) ? $atts : [], 'lls_profile_learn_language' );
+
+	if ( ! is_user_logged_in() ) {
+		$login_url = wp_login_url( get_permalink() ?: home_url( '/' ) );
+		$inner     = '<div class="lls-profile-learn-lang lls-profile-learn-lang--guest"><p class="lls-profile-learn-lang__text">' .
+			esc_html__( 'Log in to save your preferred language to learn. Until then, the story library uses Italian as the interface language and English as the language to learn.', 'language-learning-stories' ) .
+			'</p><p class="lls-profile-learn-lang__actions"><a class="lls-btn lls-btn--secondary" href="' . esc_url( $login_url ) . '">' .
+			esc_html__( 'Log in', 'language-learning-stories' ) . '</a></p></div>';
+		return function_exists( 'lls_wrap_shortcode_html' ) ? lls_wrap_shortcode_html( $inner, 'block' ) : $inner;
+	}
+
+	$user       = wp_get_current_user();
+	$current    = function_exists( 'lls_get_user_learn_target_lang' ) ? lls_get_user_learn_target_lang( $user->ID ) : 'en';
+	$labels     = function_exists( 'lls_get_story_target_lang_choice_labels' ) ? lls_get_story_target_lang_choice_labels() : [];
+	$label_cur  = isset( $labels[ $current ] ) ? $labels[ $current ] : $current;
+	$form_base  = get_permalink() ?: home_url( '/' );
+	$form_base  = remove_query_arg( [ 'lls_edit_learn_lang', 'lls_learn_lang' ], $form_base );
+	$form_action = admin_url( 'admin-post.php' );
+
+	wp_enqueue_script( 'lls-profile-learn-lang' );
+	$notice      = '';
+	if ( isset( $_GET['lls_learn_lang'] ) ) {
+		$flag = sanitize_text_field( wp_unslash( (string) $_GET['lls_learn_lang'] ) );
+		if ( 'ok' === $flag ) {
+			$notice = '<p class="lls-profile-learn-lang__notice lls-profile-learn-lang__notice--ok" role="status">' .
+				esc_html__( 'Your preference has been saved.', 'language-learning-stories' ) . '</p>';
+		} elseif ( 'err_nonce' === $flag ) {
+			$notice = '<p class="lls-profile-learn-lang__notice lls-profile-learn-lang__notice--err" role="alert">' .
+				esc_html__( 'Security check failed. Please try again.', 'language-learning-stories' ) . '</p>';
+		}
+	}
+
+	ob_start();
+	?>
+	<div class="lls-profile-learn-lang" data-lls-profile-learn-lang>
+		<?php echo wp_kses_post( $notice ); ?>
+		<div class="lls-profile-learn-lang__view">
+			<p class="lls-profile-learn-lang__line">
+				<span class="lls-profile-learn-lang__label"><?php esc_html_e( 'Language I want to learn:', 'language-learning-stories' ); ?></span>
+				<strong class="lls-profile-learn-lang__value"><?php echo esc_html( $label_cur ); ?></strong>
+				<button type="button" class="lls-profile-learn-lang__btn-edit"><?php esc_html_e( '(Edit)', 'language-learning-stories' ); ?></button>
+			</p>
+		</div>
+		<div class="lls-profile-learn-lang__edit" hidden>
+			<form class="lls-profile-learn-lang__form" method="post" action="<?php echo esc_url( $form_action ); ?>">
+				<input type="hidden" name="action" value="lls_save_user_learn_lang" />
+				<?php wp_nonce_field( 'lls_save_user_learn_lang', 'lls_learn_lang_nonce' ); ?>
+				<input type="hidden" name="_wp_http_referer" value="<?php echo esc_url( $form_base ); ?>" />
+				<p class="lls-profile-learn-lang__field">
+					<label for="lls_user_learn_target_lang" class="lls-profile-learn-lang__field-label"><?php esc_html_e( 'Language I want to learn', 'language-learning-stories' ); ?></label>
+					<select id="lls_user_learn_target_lang" name="lls_user_learn_target_lang" class="lls-profile-account__input lls-profile-account__select" required>
+						<?php
+						$codes = function_exists( 'lls_story_target_lang_codes' ) ? lls_story_target_lang_codes() : [ 'en', 'pl', 'it', 'es' ];
+						foreach ( $codes as $code ) {
+							printf(
+								'<option value="%1$s"%3$s>%2$s</option>',
+								esc_attr( $code ),
+								esc_html( isset( $labels[ $code ] ) ? $labels[ $code ] : $code ),
+								selected( $current, $code, false )
+							);
+						}
+						?>
+					</select>
+				</p>
+				<p class="lls-profile-learn-lang__form-actions">
+					<button type="submit" class="lls-btn"><?php esc_html_e( 'Save', 'language-learning-stories' ); ?></button>
+					<button type="button" class="lls-profile-learn-lang__cancel lls-profile-learn-lang__btn-cancel"><?php esc_html_e( 'Cancel', 'language-learning-stories' ); ?></button>
+				</p>
+			</form>
+		</div>
+	</div>
+	<?php
+	$inner = (string) ob_get_clean();
+	return function_exists( 'lls_wrap_shortcode_html' ) ? lls_wrap_shortcode_html( $inner, 'block' ) : $inner;
 }
 
 /**
@@ -1366,6 +1555,7 @@ add_action(
 		add_shortcode( 'lls_profile_greeting', 'lls_shortcode_profile_greeting' );
 		add_shortcode( 'lls_profile_continue_stories', 'lls_shortcode_profile_continue_stories' );
 		add_shortcode( 'lls_library_stories', 'lls_shortcode_library_stories' );
+		add_shortcode( 'lls_profile_learn_language', 'lls_shortcode_profile_learn_language' );
 		add_shortcode( 'lls_profile_account', 'lls_shortcode_profile_account' );
 		add_shortcode( 'lls_completed_phrases', 'lls_shortcode_completed_phrases' );
 		add_shortcode( 'lls_total_phrases', 'lls_shortcode_total_phrases' );

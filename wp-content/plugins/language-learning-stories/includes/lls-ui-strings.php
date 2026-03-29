@@ -49,6 +49,37 @@ function lls_get_user_known_lang( $user_id = null ) {
 }
 
 /**
+ * User meta: lingua che l’utente vuole imparare (en / pl / it / es), allineata a {@see lls_story_target_lang_codes()}.
+ *
+ * @return string
+ */
+function lls_user_learn_target_lang_meta_key() {
+	return '_lls_user_learn_target_lang';
+}
+
+/**
+ * Lingua «da imparare» scelta nel profilo. Per ospiti o meta assente/non valida: **inglese** (`en`).
+ * La libreria usa anche interfaccia predefinita **italiano** per gli ospiti tramite {@see lls_get_user_known_lang()}.
+ *
+ * @param int|null $user_id ID utente o null per l’utente corrente.
+ * @return string Codice in {@see lls_story_target_lang_codes()}.
+ */
+function lls_get_user_learn_target_lang( $user_id = null ) {
+	if ( null === $user_id ) {
+		$user_id = get_current_user_id();
+	}
+	$user_id = (int) $user_id;
+	if ( $user_id <= 0 ) {
+		return 'en';
+	}
+	$raw = get_user_meta( $user_id, lls_user_learn_target_lang_meta_key(), true );
+	if ( ! is_string( $raw ) || ! in_array( $raw, lls_story_target_lang_codes(), true ) ) {
+		return 'en';
+	}
+	return $raw;
+}
+
+/**
  * Etichette per select «lingua che conosci» (stessi codici di {@see lls_known_lang_codes()}).
  *
  * @return array<string, string>
