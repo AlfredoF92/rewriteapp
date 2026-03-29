@@ -1,0 +1,96 @@
+/**
+ * Filtri etichetta per griglia Elementor (#library) — coerente con .lls-story-rail__chip
+ */
+.lls-lib-grid-filters {
+	--lls-ink: #2c2c2c;
+	--lls-ink-soft: #4a4a4a;
+	--lls-paper: #faf8f5;
+	font-family: var(--lls-font, "Manrope", "Segoe UI", Arial, sans-serif);
+	color: var(--lls-ink);
+	margin-bottom: 1rem;
+	padding-bottom: 0.85rem;
+	border-bottom: 1px solid rgba(44, 44, 44, 0.1);
+}
+
+.lls-lib-grid-filters__block {
+	margin-bottom: 0.65rem;
+}
+
+.lls-lib-grid-filters__block:last-of-type {
+	margin-bottom: 0.4rem;
+}
+
+.lls-lib-grid-filters__heading {
+	display: block;
+	font-size: 0.65rem;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--lls-ink-soft);
+	margin-bottom: 0.4rem;
+}
+
+.lls-lib-grid-filters__chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem 0.45rem;
+	align-items: center;
+}
+
+.lls-lib-grid-chip {
+	appearance: none;
+	-webkit-appearance: none;
+	margin: 0;
+	padding: 0.28rem 0.65rem;
+	border-radius: 999px;
+	border: 1px solid rgba(44, 44, 44, 0.2);
+	background: var(--lls-paper);
+	color: var(--lls-ink);
+	font: inherit;
+	font-size: 0.8rem;
+	font-weight: 500;
+	line-height: 1.3;
+	cursor: pointer;
+	transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.lls-lib-grid-chip:hover {
+	border-color: rgba(44, 44, 44, 0.35);
+	background: #fff;
+}
+
+.lls-lib-grid-chip.is-active {
+	background: var(--lls-ink);
+	border-color: var(--lls-ink);
+	color: var(--lls-paper);
+	font-weight: 600;
+}
+
+.lls-lib-grid-filters__clear-wrap {
+	margin: 0.55rem 0 0;
+	font-size: 0.82rem;
+}
+
+.lls-lib-grid-clear {
+	margin: 0;
+	padding: 0;
+	border: none;
+	background: none;
+	font: inherit;
+	font-size: 0.82rem;
+	font-weight: 500;
+	color: var(--lls-ink-soft);
+	text-decoration: underline;
+	text-underline-offset: 0.12em;
+	cursor: pointer;
+}
+
+.lls-lib-grid-filters__empty {
+	margin: 0.5rem 0 0;
+	font-size: 0.88rem;
+	color: var(--lls-ink-soft);
+}
+
+.lls-lib-grid-filters__empty[hidden] {
+	display: none !important;
+}

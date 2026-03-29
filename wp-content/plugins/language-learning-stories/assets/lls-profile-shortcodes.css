@@ -426,6 +426,20 @@
 	color: #b32d2e;
 }
 
+.lls-unlock-success-notice {
+	margin: 0 0 0.65rem;
+	font-size: 0.88rem;
+	line-height: 1.4;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
+.lls-unlock-pending {
+	display: inline-block;
+	font-size: 0.88rem;
+	line-height: 1.35;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
 /* Cronologia frasi completate [lls_completed_phrases] — lista */
 .lls-shortcodes .lls-completed-phrases--guest,
 .lls-shortcodes .lls-completed-phrases--empty {

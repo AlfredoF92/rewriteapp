@@ -17,7 +17,11 @@ require_once __DIR__ . '/includes/lls-app-logo-shortcodes.php';
 require_once __DIR__ . '/includes/lls-footer-app-nav-settings.php';
 require_once __DIR__ . '/includes/lls-footer-shortcodes.php';
 require_once __DIR__ . '/includes/lls-coin-economy.php';
+require_once __DIR__ . '/includes/lls-story-unlock-button.php';
 require_once __DIR__ . '/includes/lls-profile-shortcodes.php';
+require_once __DIR__ . '/includes/lls-story-cards-rail-shortcode.php';
+require_once __DIR__ . '/includes/lls-elementor-library-query-filter.php';
+require_once __DIR__ . '/includes/lls-library-grid-filters-shortcode.php';
 require_once __DIR__ . '/includes/lls-coin-shortcodes.php';
 require_once __DIR__ . '/includes/lls-login-shortcodes.php';
 require_once __DIR__ . '/includes/lls-login-intro-settings.php';
@@ -25,7 +29,14 @@ require_once __DIR__ . '/includes/lls-login-intro-shortcodes.php';
 require_once __DIR__ . '/includes/lls-require-login-shortcodes.php';
 require_once __DIR__ . '/includes/lls-register-shortcodes.php';
 
-define( 'LLS_PLUGIN_VERSION', '0.2.2' );
+add_action(
+	'elementor/loaded',
+	static function () {
+		require_once __DIR__ . '/includes/lls-elementor-global-fonts.php';
+	}
+);
+
+define( 'LLS_PLUGIN_VERSION', '0.2.3' );
 
 class LLS_Plugin {
 
@@ -469,12 +480,12 @@ class LLS_Plugin {
 	}
 
 	/**
-	 * Pagina Documentazione: shortcode del plugin con spiegazioni e attributi.
+	 * Pagina Documentazione: panoramica tecnica e shortcode.
 	 */
 	public function add_documentation_submenu() {
 		add_submenu_page(
 			'edit.php?post_type=lls_story',
-			__( 'Documentazione shortcode', 'language-learning-stories' ),
+			__( 'Documentazione plugin', 'language-learning-stories' ),
 			__( 'Documentazione', 'language-learning-stories' ),
 			'edit_posts',
 			'lls-documentation',
@@ -819,6 +830,8 @@ class LLS_Plugin {
 			wp_die( esc_html__( 'Permessi insufficienti.', 'language-learning-stories' ) );
 		}
 
+		require_once __DIR__ . '/includes/lls-admin-documentation.php';
+
 		$documentation_groups = [
 			[
 				'group_title' => __( 'Shortcode per intestazione (header)', 'language-learning-stories' ),
@@ -1155,11 +1168,16 @@ class LLS_Plugin {
 			],
 		];
 
+		$documentation_groups = array_merge(
+			function_exists( 'lls_get_admin_documentation_developer_groups' ) ? lls_get_admin_documentation_developer_groups() : [],
+			$documentation_groups
+		);
+
 		?>
 		<div class="wrap lls-documentation-wrap">
-			<h1><?php esc_html_e( 'Documentazione shortcode', 'language-learning-stories' ); ?></h1>
+			<h1><?php esc_html_e( 'Documentazione plugin', 'language-learning-stories' ); ?></h1>
 			<p class="description">
-				<?php esc_html_e( 'Shortcode del plugin Language Learning Stories, raggruppati per tipo di pagina (intestazione, libreria, area utente, footer). Incollali nel contenuto di una pagina (blocco Shortcode), in un widget o nel tema; WordPress deve elaborarli (il tema elabora di solito il contenuto delle pagine automaticamente).', 'language-learning-stories' ); ?>
+				<?php esc_html_e( 'Panoramica tecnica (architettura, database, Elementor, file) e, in seguito, shortcode del plugin Language Learning Stories raggruppati per tipo di pagina (intestazione, libreria, area utente, footer). Incolla gli shortcode nel contenuto di una pagina (blocco Shortcode), in un widget o nel tema; WordPress deve elaborarli (il tema elabora di solito il contenuto delle pagine automaticamente).', 'language-learning-stories' ); ?>
 			</p>
 			<style>
 				.lls-documentation-wrap .lls-doc-code {
@@ -1212,19 +1230,45 @@ class LLS_Plugin {
 
 					<?php foreach ( $group['sections'] as $sec ) : ?>
 						<div class="postbox lls-doc-section" style="margin-top:18px;padding:16px 20px;">
-							<h3 style="margin-top:0;font-size:1.1em;">
-								<code>[<?php echo esc_html( $sec['tag'] ); ?>]</code>
-								— <?php echo esc_html( $sec['title'] ); ?>
-							</h3>
-							<p><?php echo esc_html( $sec['intro'] ); ?></p>
+							<?php if ( ! empty( $sec['reference_only'] ) ) : ?>
+								<h3 style="margin-top:0;font-size:1.1em;"><?php echo esc_html( $sec['title'] ); ?></h3>
+							<?php else : ?>
+								<h3 style="margin-top:0;font-size:1.1em;">
+									<code>[<?php echo esc_html( $sec['tag'] ); ?>]</code>
+									— <?php echo esc_html( $sec['title'] ); ?>
+								</h3>
+							<?php endif; ?>
+							<?php
+							$lls_doc_intro = isset( $sec['intro'] ) ? (string) $sec['intro'] : '';
+							if ( $lls_doc_intro !== '' ) {
+								$lls_doc_paras = preg_split( '/\n\s*\n/', $lls_doc_intro );
+								foreach ( $lls_doc_paras as $lls_doc_p ) {
+									$lls_doc_p = trim( $lls_doc_p );
+									if ( $lls_doc_p !== '' ) {
+										echo '<p>' . esc_html( $lls_doc_p ) . '</p>';
+									}
+								}
+							}
+							?>
+							<?php if ( ! empty( $sec['code_blocks'] ) && is_array( $sec['code_blocks'] ) ) : ?>
+								<?php foreach ( $sec['code_blocks'] as $lls_doc_block ) : ?>
+									<?php if ( ! empty( $lls_doc_block['label'] ) ) : ?>
+										<p style="margin:1em 0 0.35em;font-weight:600;"><?php echo esc_html( $lls_doc_block['label'] ); ?></p>
+									<?php endif; ?>
+									<pre class="lls-doc-code" style="white-space:pre-wrap;"><?php echo esc_html( isset( $lls_doc_block['code'] ) ? $lls_doc_block['code'] : '' ); ?></pre>
+								<?php endforeach; ?>
+							<?php endif; ?>
 							<?php if ( ! empty( $sec['where'] ) ) : ?>
 								<p class="description"><?php echo esc_html( $sec['where'] ); ?></p>
 							<?php endif; ?>
 
-							<h4 style="font-size:14px;margin:1.25em 0 0.5em;"><?php esc_html_e( 'Campi / attributi', 'language-learning-stories' ); ?></h4>
-							<?php if ( empty( $sec['attrs'] ) ) : ?>
-								<p><em><?php esc_html_e( 'Nessun attributo: usa solo il tag così com’è.', 'language-learning-stories' ); ?></em></p>
-							<?php else : ?>
+							<?php
+							$lls_doc_attrs_heading = isset( $sec['attrs_heading'] ) && is_string( $sec['attrs_heading'] ) && $sec['attrs_heading'] !== ''
+								? $sec['attrs_heading']
+								: __( 'Campi / attributi', 'language-learning-stories' );
+							?>
+							<?php if ( ! empty( $sec['attrs'] ) ) : ?>
+								<h4 style="font-size:14px;margin:1.25em 0 0.5em;"><?php echo esc_html( $lls_doc_attrs_heading ); ?></h4>
 								<table class="widefat striped lls-doc-attrs" style="max-width:920px;">
 									<thead>
 										<tr>
@@ -1245,12 +1289,17 @@ class LLS_Plugin {
 										<?php endforeach; ?>
 									</tbody>
 								</table>
+							<?php elseif ( empty( $sec['reference_only'] ) ) : ?>
+								<h4 style="font-size:14px;margin:1.25em 0 0.5em;"><?php echo esc_html( $lls_doc_attrs_heading ); ?></h4>
+								<p><em><?php esc_html_e( 'Nessun attributo: usa solo il tag così com’è.', 'language-learning-stories' ); ?></em></p>
 							<?php endif; ?>
 
-							<h4 style="font-size:14px;margin:1.25em 0 0.5em;"><?php esc_html_e( 'Esempi', 'language-learning-stories' ); ?></h4>
-							<?php foreach ( $sec['ex'] as $example ) : ?>
-								<pre class="lls-doc-code"><?php echo esc_html( $example ); ?></pre>
-							<?php endforeach; ?>
+							<?php if ( ! empty( $sec['ex'] ) ) : ?>
+								<h4 style="font-size:14px;margin:1.25em 0 0.5em;"><?php esc_html_e( 'Esempi', 'language-learning-stories' ); ?></h4>
+								<?php foreach ( $sec['ex'] as $example ) : ?>
+									<pre class="lls-doc-code"><?php echo esc_html( $example ); ?></pre>
+								<?php endforeach; ?>
+							<?php endif; ?>
 						</div>
 					<?php endforeach; ?>
 				</section>
@@ -2194,6 +2243,21 @@ class LLS_Plugin {
 			true
 		);
 
+		wp_register_style(
+			'lls-story-cards-rail',
+			$plugin_url . 'assets/lls-story-cards-rail.css',
+			[ 'lls-shortcodes-shared' ],
+			LLS_PLUGIN_VERSION
+		);
+
+		wp_register_script(
+			'lls-story-cards-rail',
+			$plugin_url . 'assets/lls-story-cards-rail.js',
+			[],
+			LLS_PLUGIN_VERSION,
+			true
+		);
+
 		wp_enqueue_script(
 			'lls-completed-phrases',
 			$plugin_url . 'assets/lls-completed-phrases.js',
@@ -2284,6 +2348,17 @@ class LLS_Plugin {
 		update_option( 'lls_sample_story_created', 1 );
 	}
 }
+
+add_action(
+	'elementor/dynamic_tags/register',
+	static function ( $dynamic_tags_manager ) {
+		if ( ! function_exists( 'lls_register_elementor_story_dynamic_tags' ) ) {
+			require_once __DIR__ . '/includes/lls-elementor-dynamic-tags.php';
+		}
+		lls_register_elementor_story_dynamic_tags( $dynamic_tags_manager );
+	},
+	20
+);
 
 new LLS_Plugin();
 

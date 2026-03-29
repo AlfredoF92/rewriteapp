@@ -336,6 +336,120 @@ function lls_shortcode_coin_history( $atts ) {
 	return lls_wrap_shortcode_html( $inner, 'block' );
 }
 
+/**
+ * Shortcode [lls_story_unlock_date]: stato sblocco storia a coin.
+ *
+ * Se sbloccata (con data in registro): «Sbloccato in data …». Se non sbloccata (a pagamento): «Sblocca la storia per N coin».
+ * Storia gratuita (0 coin): nessun output salvo attributo `empty`.
+ *
+ * Nel Loop: post corrente. Attributi: id, empty, format, time="1" (data+ora).
+ *
+ * @param string[]|string $atts Attributi.
+ * @return string
+ */
+function lls_shortcode_story_unlock_date( $atts ) {
+	if ( ! function_exists( 'lls_wrap_shortcode_html' ) || ! function_exists( 'lls_get_story_coin_unlock_timestamp' ) || ! function_exists( 'lls_user_can_access_story' ) || ! function_exists( 'lls_get_story_coin_cost' ) ) {
+		return '';
+	}
+
+	$atts = shortcode_atts(
+		[
+			'id'       => '0',
+			'empty'    => '',
+			'format'   => '',
+			'time'     => '0',
+			'datetime' => '0',
+		],
+		is_array( $atts ) ? $atts : [],
+		'lls_story_unlock_date'
+	);
+
+	$post_id = (int) $atts['id'];
+	if ( $post_id <= 0 && function_exists( 'lls_story_unlock_resolve_post_id' ) ) {
+		$post_id = lls_story_unlock_resolve_post_id( 0 );
+	} elseif ( $post_id <= 0 ) {
+		$post_id = (int) get_the_ID();
+	}
+
+	$user_id = (int) get_current_user_id();
+
+	if ( $post_id <= 0 ) {
+		$empty = (string) $atts['empty'];
+		return $empty !== ''
+			? lls_wrap_shortcode_html( '<span class="lls-story-unlock-date lls-story-unlock-date--empty">' . esc_html( $empty ) . '</span>', 'contents' )
+			: '';
+	}
+
+	if ( get_post_type( $post_id ) !== 'lls_story' ) {
+		$empty = (string) $atts['empty'];
+		return $empty !== ''
+			? lls_wrap_shortcode_html( '<span class="lls-story-unlock-date lls-story-unlock-date--empty">' . esc_html( $empty ) . '</span>', 'contents' )
+			: '';
+	}
+
+	$cost = lls_get_story_coin_cost( $post_id );
+	$can  = lls_user_can_access_story( $user_id, $post_id );
+
+	// Storia gratuita: niente riga acquisto/sblocco (solo eventuale empty).
+	if ( $cost <= 0 ) {
+		$empty = (string) $atts['empty'];
+		return $empty !== ''
+			? lls_wrap_shortcode_html( '<span class="lls-story-unlock-date lls-story-unlock-date--empty">' . esc_html( $empty ) . '</span>', 'contents' )
+			: '';
+	}
+
+	// A pagamento e non accessibile: invito a sbloccare.
+	if ( ! $can ) {
+		$line = sprintf(
+			/* translators: %d: coin cost to unlock the story. */
+			__( 'Sblocca la storia per %d coin', 'language-learning-stories' ),
+			$cost
+		);
+		$html = '<span class="lls-story-unlock-date-line lls-story-unlock-date-line--locked">' . esc_html( $line ) . '</span>';
+		return lls_wrap_shortcode_html( $html, 'contents' );
+	}
+
+	// Accessibile: sbloccato in data (da registro coin) o data non in registro.
+	$ts = lls_get_story_coin_unlock_timestamp( $user_id, $post_id );
+
+	$format = trim( (string) $atts['format'] );
+	if ( $format === '' ) {
+		$want_time = (string) $atts['time'] === '1'
+			|| strtolower( (string) $atts['time'] ) === 'true'
+			|| (string) $atts['datetime'] === '1'
+			|| strtolower( (string) $atts['datetime'] ) === 'true';
+		$format        = $want_time
+			? get_option( 'date_format' ) . ' ' . get_option( 'time_format' )
+			: (string) get_option( 'date_format' );
+	}
+
+	if ( $ts <= 0 ) {
+		$line = __( 'Sbloccato in data non disponibile.', 'language-learning-stories' );
+		$html = '<span class="lls-story-unlock-date-line lls-story-unlock-date-line--unlocked lls-story-unlock-date-line--no-ts">' . esc_html( $line ) . '</span>';
+		return lls_wrap_shortcode_html( $html, 'contents' );
+	}
+
+	$formatted = wp_date( $format, $ts );
+	/**
+	 * Filtra la data di sblocco/acquisto mostrata dallo shortcode [lls_story_unlock_date].
+	 *
+	 * @param string $formatted Formattata con wp_date.
+	 * @param int    $ts        Timestamp Unix.
+	 * @param int    $story_id  ID storia.
+	 * @param int    $user_id   ID utente.
+	 */
+	$formatted = (string) apply_filters( 'lls_story_unlock_date_formatted', $formatted, $ts, $post_id, $user_id );
+
+	$iso = wp_date( 'c', $ts );
+	$label = __( 'Sbloccato in data', 'language-learning-stories' );
+	$html  = '<span class="lls-story-unlock-date-line lls-story-unlock-date-line--unlocked">'
+		. '<span class="lls-story-unlock-date-line__label">' . esc_html( $label ) . ' </span>'
+		. '<time class="lls-story-unlock-date" datetime="' . esc_attr( $iso ) . '">' . esc_html( $formatted ) . '</time>'
+		. '</span>';
+
+	return lls_wrap_shortcode_html( $html, 'contents' );
+}
+
 add_action(
 	'init',
 	static function () {
@@ -343,5 +457,6 @@ add_action(
 		add_shortcode( 'lls_coin', 'lls_shortcode_coin' );
 		add_shortcode( 'lls_coin_history', 'lls_shortcode_coin_history' );
 		add_shortcode( 'coin_history', 'lls_shortcode_coin_history' );
+		add_shortcode( 'lls_story_unlock_date', 'lls_shortcode_story_unlock_date' );
 	}
 );

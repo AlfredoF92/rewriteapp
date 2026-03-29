@@ -300,6 +300,41 @@ function lls_order_story_ids_by_recent( $user_id, array $ids ) {
 }
 
 /**
+ * ID delle storie pubblicate su cui l’utente ha salvataggio progresso e non ha ancora completato tutte le frasi
+ * (stessa logica di [lls_profile_continue_stories]: ordine “recenti” poi data modifica).
+ *
+ * @param int $user_id ID utente loggato.
+ * @return int[]
+ */
+function lls_get_user_in_progress_story_ids( $user_id ) {
+	$user_id = (int) $user_id;
+	if ( $user_id <= 0 ) {
+		return [];
+	}
+	$candidates = lls_collect_user_progress_story_ids( $user_id );
+	$ordered    = lls_order_story_ids_by_recent( $user_id, $candidates );
+	$out        = [];
+	foreach ( $ordered as $story_id ) {
+		$post = get_post( $story_id );
+		if ( ! $post || 'lls_story' !== $post->post_type || 'publish' !== $post->post_status ) {
+			continue;
+		}
+		$sentences = get_post_meta( $story_id, '_lls_sentences', true );
+		$total     = is_array( $sentences ) ? count( $sentences ) : 0;
+		if ( $total < 1 ) {
+			continue;
+		}
+		$saved     = get_user_meta( $user_id, '_lls_progress_' . $story_id, true );
+		$completed = ( is_array( $saved ) && isset( $saved['completed'] ) ) ? (int) $saved['completed'] : 0;
+		if ( $completed >= $total ) {
+			continue;
+		}
+		$out[] = $story_id;
+	}
+	return $out;
+}
+
+/**
  * Testo trama (estratto o inizio contenuto).
  *
  * @param WP_Post $post Post storia.

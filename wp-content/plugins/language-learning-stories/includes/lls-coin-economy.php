@@ -169,6 +169,46 @@ function lls_get_user_coin_ledger( $user_id ) {
 }
 
 /**
+ * Timestamp Unix dell’acquisto/sblocco a pagamento (prima voce registro unlock per quella storia).
+ *
+ * @param int $user_id  ID utente.
+ * @param int $story_id ID post `lls_story`.
+ * @return int Timestamp o 0 se non trovato (nessuno sblocco a pagamento registrato).
+ */
+function lls_get_story_coin_unlock_timestamp( $user_id, $story_id ) {
+	$user_id  = (int) $user_id;
+	$story_id = (int) $story_id;
+	if ( $user_id <= 0 || $story_id <= 0 ) {
+		return 0;
+	}
+	$log    = lls_get_user_coin_ledger( $user_id );
+	$best_ts = 0;
+	foreach ( $log as $row ) {
+		if ( ! is_array( $row ) ) {
+			continue;
+		}
+		if ( ( isset( $row['type'] ) ? (string) $row['type'] : '' ) !== 'unlock' ) {
+			continue;
+		}
+		if ( (int) ( $row['story_id'] ?? 0 ) !== $story_id ) {
+			continue;
+		}
+		$ts = isset( $row['ts'] ) ? (int) $row['ts'] : 0;
+		if ( $ts <= 0 && ! empty( $row['at'] ) ) {
+			$u = mysql2date( 'U', (string) $row['at'], false );
+			$ts = $u ? (int) $u : 0;
+		}
+		if ( $ts <= 0 ) {
+			continue;
+		}
+		if ( $best_ts === 0 || $ts < $best_ts ) {
+			$best_ts = $ts;
+		}
+	}
+	return $best_ts;
+}
+
+/**
  * Giorno di calendario (Y-m-d, fuso orario del sito) per una voce registro.
  *
  * @param array<string, mixed> $row Voce ledger.
@@ -507,12 +547,31 @@ function lls_ajax_unlock_story() {
 			400
 		);
 	}
+	$date_str = wp_date(
+		get_option( 'date_format' ) . ', ' . get_option( 'time_format' ),
+		current_time( 'timestamp' )
+	);
+	if ( $date_str === '' ) {
+		$date_str = gmdate( 'Y-m-d H:i', current_time( 'timestamp' ) );
+	}
+	$notice = sprintf(
+		/* translators: %s: date and time (site locale) when the story was unlocked. */
+		__( 'Hai sbloccato questa storia in data: %s.', 'language-learning-stories' ),
+		$date_str
+	);
+
+	$permalink = get_permalink( $story_id );
+	if ( ! $permalink ) {
+		$permalink = home_url( '/' );
+	}
+
 	wp_send_json_success(
 		[
-			'coin_total' => lls_get_user_coin_balance( $user_id ),
-			'unlocked'   => true,
-			'story_id'   => $story_id,
-			'permalink'  => get_permalink( $story_id ),
+			'coin_total'       => lls_get_user_coin_balance( $user_id ),
+			'unlocked'         => true,
+			'story_id'         => $story_id,
+			'permalink'        => (string) $permalink,
+			'unlocked_notice'  => $notice,
 		]
 	);
 }
@@ -543,9 +602,9 @@ function lls_enqueue_coin_economy_script() {
 			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'lls_unlock_story' ),
 			'i18n'    => [
-				'unlocking'  => __( 'Unlocking…', 'language-learning-stories' ),
-				'error'      => __( 'Something went wrong. Please try again.', 'language-learning-stories' ),
-				'enterStory' => __( 'Enter the story', 'language-learning-stories' ),
+				'unlockPending' => __( 'Please wait…', 'language-learning-stories' ),
+				'error'         => __( 'Something went wrong. Please try again.', 'language-learning-stories' ),
+				'enterStory'    => __( 'Enter the story', 'language-learning-stories' ),
 			],
 		]
 	);
