@@ -2,6 +2,30 @@ jQuery(function ($) {
 
 	var mediaFrameOpeningImage = null;
 
+	function llsGetSentenceFieldLabels() {
+		var L = (typeof llsAdmin !== 'undefined' && llsAdmin.sentenceFieldLabels) ? llsAdmin.sentenceFieldLabels : {};
+		return {
+			textIt: L.textIt || 'Frase in italiano',
+			mainTranslation: L.mainTranslation || 'Traduzione principale (appare nella storia)',
+			alt1: L.alt1 || 'Traduzione alternativa 1',
+			alt2: L.alt2 || 'Traduzione alternativa 2'
+		};
+	}
+
+	function llsGetCsvExportHeaders() {
+		if (typeof llsAdmin !== 'undefined' && Array.isArray(llsAdmin.csvExportHeaders) && llsAdmin.csvExportHeaders.length) {
+			return llsAdmin.csvExportHeaders;
+		}
+		return ['Numero', 'Frase in italiano', 'Traduzione principale', 'Traduzione alternativa 1', 'Traduzione alternativa 2', 'Consigli grammaticali'];
+	}
+
+	function llsCsvPreviewHeaderRowHtml() {
+		var H = (typeof llsAdmin !== 'undefined' && Array.isArray(llsAdmin.csvPreviewHeaders) && llsAdmin.csvPreviewHeaders.length >= 4)
+			? llsAdmin.csvPreviewHeaders
+			: ['N°', 'Frase (italiano)', 'Traduzione principale', 'Azione'];
+		return '<th>' + H[0] + '</th><th>' + H[1] + '</th><th>' + H[2] + '</th><th>' + H[3] + '</th>';
+	}
+
 
 
 	function initOpeningImage() {
@@ -270,6 +294,8 @@ jQuery(function ($) {
 
 
 
+		var lab = llsGetSentenceFieldLabels();
+
 		var $card = $(
 
 			'<div class="lls-sentence-card is-open">' +
@@ -292,7 +318,7 @@ jQuery(function ($) {
 
 					'<p>' +
 
-						'<label><strong>Frase in italiano</strong><br>' +
+						'<label><strong>' + $('<div>').text(lab.textIt).html() + '</strong><br>' +
 
 						'<textarea name="lls_sentences[text_it][]" class="widefat" rows="2"></textarea>' +
 
@@ -302,7 +328,7 @@ jQuery(function ($) {
 
 					'<p>' +
 
-						'<label><strong>Traduzione principale (appare nella storia)</strong><br>' +
+						'<label><strong>' + $('<div>').text(lab.mainTranslation).html() + '</strong><br>' +
 
 						'<textarea name="lls_sentences[main_translation][]" class="widefat" rows="2"></textarea>' +
 
@@ -312,7 +338,7 @@ jQuery(function ($) {
 
 					'<p>' +
 
-						'<label><strong>Traduzione alternativa 1</strong><br>' +
+						'<label><strong>' + $('<div>').text(lab.alt1).html() + '</strong><br>' +
 
 						'<input type="text" name="lls_sentences[alt1][]" class="widefat" />' +
 
@@ -322,7 +348,7 @@ jQuery(function ($) {
 
 					'<p>' +
 
-						'<label><strong>Traduzione alternativa 2</strong><br>' +
+						'<label><strong>' + $('<div>').text(lab.alt2).html() + '</strong><br>' +
 
 						'<input type="text" name="lls_sentences[alt2][]" class="widefat" />' +
 
@@ -642,21 +668,7 @@ jQuery(function ($) {
 
 
 
-		var header = [
-
-			'Numero',
-
-			'Frase in italiano',
-
-			'Traduzione principale',
-
-			'Traduzione alternativa 1',
-
-			'Traduzione alternativa 2',
-
-			'Consigli grammaticali'
-
-		];
+		var header = llsGetCsvExportHeaders();
 
 		var headerLine = header.map(escapeCsvCell).join(';');
 
@@ -906,7 +918,7 @@ jQuery(function ($) {
 
 			'<thead><tr>' +
 
-			'<th>N°</th><th>Frase (italiano)</th><th>Traduzione principale</th><th>Azione</th>' +
+			llsCsvPreviewHeaderRowHtml() +
 
 			'</tr></thead><tbody>';
 
@@ -1000,13 +1012,21 @@ jQuery(function ($) {
 
 		if (rows.length >= 2 && nUnique < rows.length) {
 
+			var i18n = (typeof llsAdmin !== 'undefined' && llsAdmin.i18n) ? llsAdmin.i18n : {};
+
+			var dupTitle = i18n.csvDupWarnTitle || 'Frasi duplicate nel file:';
+
+			var dupTpl = i18n.csvDupWarnBody || ('risultano %1$d frasi distinte nella colonna «%2$s» su %3$d righe. Il CSV ripete spesso la stessa riga: non è un errore di import. Rigenera il file (es. con ChatGPT) chiedendo una frase diversa per ogni riga, in ordine, che formino un’unica storia.');
+
+			var knownDisp = (typeof llsAdmin !== 'undefined' && llsAdmin.knownLangDisplay) ? llsAdmin.knownLangDisplay : 'italiano';
+
+			var dupBody = dupTpl.split('%1$d').join(String(nUnique)).split('%2$s').join(knownDisp).split('%3$d').join(String(rows.length));
+
 			$modal.find('.lls-modal-summary').after(
 
-				'<div class="lls-import-warn-dup notice notice-warning" style="margin-top:10px;"><p><strong>Frasi duplicate nel file:</strong> ' +
+				'<div class="lls-import-warn-dup notice notice-warning" style="margin-top:10px;"><p><strong>' + $('<div>').text(dupTitle).html() + '</strong> ' +
 
-				'risultano <strong>' + nUnique + '</strong> frasi in italiano diverse su <strong>' + rows.length + '</strong> righe. ' +
-
-				'Il CSV ripete spesso la stessa riga: non è un errore di import. Rigenera il file (es. con ChatGPT) chiedendo <strong>una frase italiana diversa per ogni riga</strong>, in ordine, che formino un’unica storia.</p></div>'
+				$('<div>').text(dupBody).html() + '</p></div>'
 
 			);
 

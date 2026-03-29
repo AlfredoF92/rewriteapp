@@ -245,3 +245,230 @@
 	margin: 0;
 	color: var(--lls-ink-soft, #4a4a4a);
 }
+
+/* Coin: costo / ricompensa in elenco storie */
+.lls-shortcodes .lls-story-coin-meta {
+	list-style: none;
+	margin: 0 0 0.85rem;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	font-size: 0.9rem;
+	line-height: 1.4;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
+.lls-shortcodes .lls-story-coin-meta__item {
+	margin: 0;
+}
+
+.lls-shortcodes .lls-story-coin-meta__item--cost {
+	font-weight: 600;
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-shortcodes .lls-profile-continue__item--locked .lls-story-title__text {
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-shortcodes .lls-continua-wrap .lls-btn:disabled {
+	opacity: 0.65;
+	cursor: not-allowed;
+}
+
+.lls-shortcodes .lls-unlock-feedback {
+	display: block;
+	margin-top: 0.5rem;
+	font-size: 0.88rem;
+	line-height: 1.35;
+}
+
+.lls-shortcodes .lls-unlock-feedback--error {
+	color: #b32d2e;
+}
+
+/* Cronologia frasi completate [lls_completed_phrases] — lista */
+.lls-shortcodes .lls-completed-phrases--guest,
+.lls-shortcodes .lls-completed-phrases--empty {
+	margin: 0;
+	color: var(--lls-ink-soft, #4a4a4a);
+	line-height: 1.5;
+}
+
+.lls-shortcodes .lls-completed-phrases__header {
+	margin: 0 0 1.75rem;
+	padding-bottom: 1.35rem;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.lls-shortcodes .lls-completed-phrases__total-line {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 1rem 1.5rem;
+	margin: 0;
+}
+
+.lls-shortcodes .lls-completed-phrases__total-num {
+	flex: 0 0 auto;
+	font-size: clamp(2.75rem, 8vw, 4.5rem);
+	font-weight: 800;
+	line-height: 1;
+	letter-spacing: -0.04em;
+	color: var(--lls-ink, #1a1a1a);
+	font-variant-numeric: tabular-nums;
+}
+
+.lls-shortcodes .lls-completed-phrases__total-label {
+	flex: 1 1 auto;
+	min-width: 0;
+	text-align: right;
+	font-size: clamp(1rem, 2.6vw, 1.25rem);
+	font-weight: 600;
+	line-height: 1.35;
+	color: var(--lls-ink-soft, #4a4a4a);
+	max-width: none;
+}
+
+.lls-shortcodes .lls-completed-phrases__header-note {
+	margin: 0.85rem 0 0;
+	font-size: 0.92rem;
+	line-height: 1.45;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
+.lls-shortcodes .lls-completed-phrases__list {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 1.35rem;
+}
+
+.lls-shortcodes .lls-completed-phrases__item {
+	margin: 0;
+	padding: 0 0 1.25rem;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.lls-shortcodes .lls-completed-phrases__item:last-child {
+	padding-bottom: 0;
+	border-bottom: none;
+}
+
+.lls-shortcodes .lls-completed-phrases__phrase-block {
+	margin-bottom: 0.65rem;
+}
+
+.lls-shortcodes .lls-completed-phrases__en-row {
+	display: flex;
+	flex-direction: row;
+	align-items: flex-start;
+	gap: 0.5rem;
+}
+
+.lls-shortcodes .lls-completed-phrases__en {
+	flex: 1;
+	min-width: 0;
+	margin: 0;
+	font-size: clamp(1.2rem, 3.6vw, 1.55rem);
+	font-weight: 700;
+	line-height: 1.4;
+	letter-spacing: -0.02em;
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-shortcodes .lls-completed-phrases__hear {
+	flex: 0 0 auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.85rem;
+	height: 2.85rem;
+	margin: 0;
+	padding: 0;
+	border: 1px solid rgba(44, 44, 44, 0.15);
+	border-radius: 8px;
+	background: var(--lls-paper-alt, #f5f2ed);
+	color: var(--lls-ink, #2c2c2c);
+	cursor: pointer;
+	transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.lls-shortcodes .lls-completed-phrases__hear:hover,
+.lls-shortcodes .lls-completed-phrases__hear:focus-visible {
+	background: var(--lls-paper, #faf8f5);
+	border-color: rgba(44, 44, 44, 0.25);
+	color: var(--lls-ink, #1a1a1a);
+	outline: none;
+}
+
+.lls-shortcodes .lls-completed-phrases__hear-icon {
+	display: block;
+	width: 22px;
+	height: 22px;
+}
+
+.lls-shortcodes .lls-completed-phrases__it {
+	margin: 0.35rem 0 0;
+	font-size: 0.82rem;
+	line-height: 1.4;
+	color: var(--lls-ink-soft, #4a4a4a);
+	font-weight: 400;
+}
+
+.lls-shortcodes .lls-completed-phrases__meta {
+	font-size: 0.88rem;
+	line-height: 1.45;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
+.lls-shortcodes .lls-completed-phrases__story-line {
+	margin: 0 0 0.35rem;
+}
+
+.lls-shortcodes .lls-completed-phrases__story-link {
+	font-weight: 600;
+	color: var(--lls-ink-soft, #4a4a4a);
+	text-decoration: underline;
+	text-underline-offset: 0.12em;
+}
+
+.lls-shortcodes .lls-completed-phrases__story-link:hover {
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-shortcodes .lls-completed-phrases__story-link--muted {
+	text-decoration: none;
+	font-weight: 500;
+	color: var(--lls-ink-soft, #4a4a4a);
+}
+
+.lls-shortcodes .lls-completed-phrases__tax {
+	margin: 0;
+}
+
+.lls-shortcodes .lls-completed-phrases__tax-line {
+	margin: 0.2rem 0 0;
+	font-size: 0.85rem;
+}
+
+.lls-shortcodes .lls-completed-phrases__tax-label {
+	font-weight: 600;
+	margin-right: 0.35rem;
+	color: var(--lls-ink, #1a1a1a);
+}
+
+.lls-shortcodes .lls-completed-phrases__tax-list a {
+	color: var(--lls-ink-soft, #4a4a4a);
+	text-decoration: underline;
+	text-underline-offset: 0.1em;
+}
+
+.lls-shortcodes .lls-completed-phrases__tax-list a:hover {
+	color: var(--lls-ink, #1a1a1a);
+}

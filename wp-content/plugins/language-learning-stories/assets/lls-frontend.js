@@ -4,6 +4,8 @@
 	if (typeof llsStory === 'undefined') return;
 
 	var data = llsStory;
+	var targetLang = (data.targetLang && typeof data.targetLang === 'string') ? data.targetLang : 'en';
+	var targetSpeechLocale = (data.targetSpeechLocale && typeof data.targetSpeechLocale === 'string') ? data.targetSpeechLocale : 'en-US';
 	var S = data.strings && typeof data.strings === 'object' ? data.strings : {};
 	function llsT(key) {
 		var v = S[key];
@@ -315,7 +317,7 @@
 			recognition = rec;
 			rec.continuous = true;
 			rec.interimResults = true;
-			rec.lang = 'en-US';
+			rec.lang = targetSpeechLocale;
 
 			rec.onresult = function (e) {
 				var sessionText = '';
@@ -467,9 +469,14 @@
 		var restartBtnHtml = state.completedIndex > 0
 			? '<button type="button" class="lls-restart-link" id="lls-btn-restart-header" aria-label="' + escapeAttr(llsT('restart_header_aria')) + '">' + escapeHtml(llsT('restart_header_link')) + '</button>'
 			: '';
+		var titleSub = (data.titleInTargetLang && typeof data.titleInTargetLang === 'string') ? data.titleInTargetLang.trim() : '';
+		var titleSubHtml = titleSub
+			? '<p class="lls-story-title-target" lang="' + escapeAttr(targetLang) + '">' + escapeHtml(titleSub) + '</p>'
+			: '';
 		var headerHtml =
 			'<div class="lls-header">' +
 				'<h1 class="lls-story-title">' + escapeHtml(data.title) + '</h1>' +
+				titleSubHtml +
 				'<div class="lls-progress-label">' + escapeHtml(llsT('progress_label')) + '</div>' +
 				'<div class="lls-progress-bar-wrap">' +
 					'<div class="lls-progress-bar" style="width:' + pct + '%"></div>' +
@@ -881,29 +888,35 @@
 		});
 	}
 
-	// Sceglie una voce inglese più naturale quando disponibile
-	function getPreferredEnglishVoice() {
+	// Voce sintesi per la lingua obiettivo della storia (en / pl / it / es)
+	function getPreferredTargetLangVoice() {
 		var voices = window.speechSynthesis.getVoices();
-		var en = voices.filter(function (v) { return v.lang.startsWith('en'); });
-		if (!en.length) return null;
-		var natural = en.filter(function (v) {
+		if (!voices || !voices.length) return null;
+		var tl = (targetLang || 'en').toLowerCase();
+		var langVoices = voices.filter(function (v) {
+			if (!v.lang) return false;
+			var l = v.lang.toLowerCase();
+			return l === tl || l.indexOf(tl + '-') === 0;
+		});
+		if (!langVoices.length) return null;
+		var natural = langVoices.filter(function (v) {
 			var n = (v.name || '').toLowerCase();
 			return n.indexOf('natural') !== -1 || n.indexOf('google') !== -1 || n.indexOf('premium') !== -1 || n.indexOf('neural') !== -1 || n.indexOf('samantha') !== -1 || n.indexOf('karen') !== -1;
 		});
-		return natural.length ? natural[0] : en[0];
+		return natural.length ? natural[0] : langVoices[0];
 	}
 
-	// Lettura ad alta voce della frase (inglese, lento e voce più naturale se disponibile)
+	// Lettura ad alta voce della frase nella lingua da imparare (lenta, voce naturale se disponibile)
 	function speakStorySentence(text) {
 		var t = (text || '').trim();
 		if (!t) return;
 		if (typeof window.speechSynthesis === 'undefined') return;
 		window.speechSynthesis.cancel();
 		var u = new window.SpeechSynthesisUtterance(t);
-		u.lang = 'en-US';
+		u.lang = targetSpeechLocale;
 		u.rate = 0.55;
 		u.pitch = 1;
-		var voice = getPreferredEnglishVoice();
+		var voice = getPreferredTargetLangVoice();
 		if (voice) u.voice = voice;
 		window.speechSynthesis.speak(u);
 	}

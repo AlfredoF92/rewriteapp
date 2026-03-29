@@ -62,6 +62,190 @@ function lls_get_known_lang_choice_labels() {
 }
 
 /**
+ * Meta post: lingua che la storia vuole far imparare (obiettivo).
+ *
+ * @return string
+ */
+function lls_story_target_lang_meta_key() {
+	return '_lls_target_lang';
+}
+
+/**
+ * Codici lingua obiettivo selezionabili per storia.
+ *
+ * @return string[]
+ */
+function lls_story_target_lang_codes() {
+	$codes = [ 'en', 'pl', 'it', 'es' ];
+	/**
+	 * Codici lingua «da imparare» per storia (default: en, pl, it, es).
+	 *
+	 * @param string[] $codes
+	 */
+	return apply_filters( 'lls_story_target_lang_codes', $codes );
+}
+
+/**
+ * Etichette per il selettore «lingua da imparare» in admin.
+ *
+ * @return array<string, string>
+ */
+function lls_get_story_target_lang_choice_labels() {
+	return [
+		'en' => __( 'English', 'language-learning-stories' ),
+		'pl' => __( 'Polish', 'language-learning-stories' ),
+		'it' => __( 'Italian', 'language-learning-stories' ),
+		'es' => __( 'Spanish', 'language-learning-stories' ),
+	];
+}
+
+/**
+ * Nome lingua per etichette campi frase in admin (stesso set known + en).
+ *
+ * @param string $code Codice it|pl|es|en.
+ * @return string
+ */
+function lls_get_language_display_name_for_admin( $code ) {
+	$code = (string) $code;
+	$map  = [
+		'it' => __( 'Italiano', 'language-learning-stories' ),
+		'pl' => __( 'Polacco', 'language-learning-stories' ),
+		'es' => __( 'Spagnolo', 'language-learning-stories' ),
+		'en' => __( 'Inglese', 'language-learning-stories' ),
+	];
+	return isset( $map[ $code ] ) ? $map[ $code ] : $code;
+}
+
+/**
+ * Lingua obiettivo della storia (default inglese).
+ *
+ * @param int $post_id ID post storia.
+ * @return string Codice en|pl|it|es.
+ */
+function lls_get_story_target_lang( $post_id ) {
+	$post_id = (int) $post_id;
+	$raw     = $post_id > 0 ? get_post_meta( $post_id, lls_story_target_lang_meta_key(), true ) : '';
+	if ( ! is_string( $raw ) || ! in_array( $raw, lls_story_target_lang_codes(), true ) ) {
+		return 'en';
+	}
+	return $raw;
+}
+
+/**
+ * Meta post: titolo della storia nella lingua da imparare (opzionale).
+ *
+ * @return string
+ */
+function lls_story_title_in_target_lang_meta_key() {
+	return '_lls_title_in_target_lang';
+}
+
+/**
+ * Titolo tradotto nella lingua obiettivo della storia (vuoto se non impostato).
+ *
+ * @param int $post_id ID post storia.
+ * @return string
+ */
+function lls_get_story_title_in_target_lang( $post_id ) {
+	$post_id = (int) $post_id;
+	if ( $post_id <= 0 ) {
+		return '';
+	}
+	$v = get_post_meta( $post_id, lls_story_title_in_target_lang_meta_key(), true );
+	return is_string( $v ) ? trim( $v ) : '';
+}
+
+/**
+ * Locale BCP 47 per sintesi vocale / riconoscimento (mappa semplice).
+ *
+ * @param string $code Codice lingua breve.
+ * @return string
+ */
+function lls_story_target_lang_speech_locale( $code ) {
+	$map = [
+		'en' => 'en-US',
+		'pl' => 'pl-PL',
+		'it' => 'it-IT',
+		'es' => 'es-ES',
+	];
+	$code = (string) $code;
+	if ( isset( $map[ $code ] ) ) {
+		return $map[ $code ];
+	}
+	/**
+	 * Locale Web Speech per lingua obiettivo storia.
+	 *
+	 * @param string $locale Locale proposta.
+	 * @param string $code   Codice lingua storia.
+	 */
+	return (string) apply_filters( 'lls_story_target_lang_speech_locale', $code . '-' . strtoupper( $code ), $code );
+}
+
+/**
+ * Nome della lingua da imparare, formulato per l’interfaccia (it / pl / es).
+ *
+ * @param string $target_code     Codice lingua obiettivo storia (en|pl|it|es).
+ * @param string $interface_code  Lingua interfaccia storia (it|pl|es).
+ * @return string
+ */
+function lls_get_target_lang_name_for_ui( $target_code, $interface_code ) {
+	$target_code     = in_array( (string) $target_code, lls_story_target_lang_codes(), true ) ? (string) $target_code : 'en';
+	$interface_code = in_array( (string) $interface_code, lls_known_lang_codes(), true ) ? (string) $interface_code : 'it';
+	$table           = [
+		'it' => [
+			'en' => 'inglese',
+			'pl' => 'polacco',
+			'it' => 'italiano',
+			'es' => 'spagnolo',
+		],
+		'pl' => [
+			'en' => 'angielski',
+			'pl' => 'polski',
+			'it' => 'włoski',
+			'es' => 'hiszpański',
+		],
+		'es' => [
+			'en' => 'inglés',
+			'pl' => 'polaco',
+			'it' => 'italiano',
+			'es' => 'español',
+		],
+	];
+	$n = isset( $table[ $interface_code ][ $target_code ] ) ? $table[ $interface_code ][ $target_code ] : $target_code;
+	/**
+	 * Nome mostrato in UI per la lingua obiettivo (es. «inglese»).
+	 *
+	 * @param string $name            Nome già risolto.
+	 * @param string $target_code     Codice obiettivo.
+	 * @param string $interface_code  Codice interfaccia.
+	 */
+	return (string) apply_filters( 'lls_target_lang_name_for_ui', $n, $target_code, $interface_code );
+}
+
+/**
+ * Sostituisce %s nelle stringhe volume/microfono con il nome lingua obiettivo.
+ *
+ * @param array<string, string> $strings          Stringhe UI già unite.
+ * @param string                $target_code      Lingua da imparare (storia).
+ * @param string                $interface_code   Lingua interfaccia.
+ * @return array<string, string>
+ */
+function lls_apply_target_lang_placeholders_to_ui_strings( array $strings, $target_code, $interface_code ) {
+	$name = lls_get_target_lang_name_for_ui( $target_code, $interface_code );
+	$keys = [ 'hear_aria_label', 'hear_title', 'mic_aria_label', 'mic_label', 'mic_hint' ];
+	foreach ( $keys as $key ) {
+		if ( empty( $strings[ $key ] ) || ! is_string( $strings[ $key ] ) ) {
+			continue;
+		}
+		if ( strpos( $strings[ $key ], '%s' ) === false ) {
+			continue;
+		}
+		$strings[ $key ] = sprintf( $strings[ $key ], $name );
+	}
+	return $strings;
+}
+
+/**
  * Catalogo raggruppato (etichette admin + default italiano).
  *
  * @return array<string, array{title: string, strings: array<string, array{label: string, default: string}>}>
@@ -139,12 +323,12 @@ function lls_get_ui_string_catalog() {
 					'default' => 'Scrivi o pronuncia la traduzione della prossima frase della storia',
 				],
 				'hear_aria_label'        => [
-					'label'   => __( 'Icona volume: aria-label', 'language-learning-stories' ),
-					'default' => 'Ascolta la traduzione in inglese',
+					'label'   => __( 'Icona volume: aria-label (usa %s = lingua da imparare)', 'language-learning-stories' ),
+					'default' => 'Ascolta la traduzione in %s',
 				],
 				'hear_title'             => [
-					'label'   => __( 'Icona volume: title (tooltip)', 'language-learning-stories' ),
-					'default' => 'Ascolta la traduzione in inglese (puoi cliccare anche sulla frase)',
+					'label'   => __( 'Icona volume: title (tooltip; %s = lingua da imparare)', 'language-learning-stories' ),
+					'default' => 'Ascolta la traduzione in %s (puoi cliccare anche sulla frase)',
 				],
 			],
 		],
@@ -152,16 +336,16 @@ function lls_get_ui_string_catalog() {
 			'title'   => __( 'Microfono', 'language-learning-stories' ),
 			'strings' => [
 				'mic_label'              => [
-					'label'   => __( 'Testo principale pulsante microfono', 'language-learning-stories' ),
-					'default' => 'Tieni premuto per pronunciare la frase…',
+					'label'   => __( 'Testo principale pulsante microfono (%s = lingua da imparare)', 'language-learning-stories' ),
+					'default' => 'Tieni premuto per pronunciare la frase in %s',
 				],
 				'mic_hint'               => [
-					'label'   => __( 'Suggerimento sotto il microfono', 'language-learning-stories' ),
-					'default' => '(È più efficace per imparare l\'inglese)',
+					'label'   => __( 'Suggerimento sotto il microfono (%s = lingua da imparare)', 'language-learning-stories' ),
+					'default' => '(Esercitati in %s)',
 				],
 				'mic_aria_label'         => [
-					'label'   => __( 'Etichetta accessibilità microfono', 'language-learning-stories' ),
-					'default' => 'Mantieni premuto per pronunciare la frase',
+					'label'   => __( 'Etichetta accessibilità microfono (%s = lingua da imparare)', 'language-learning-stories' ),
+					'default' => 'Tieni premuto per pronunciare la frase in %s',
 				],
 				'mic_feedback_listening' => [
 					'label'   => __( 'Feedback «In ascolto»', 'language-learning-stories' ),
@@ -286,11 +470,11 @@ function lls_get_builtin_ui_strings_pl() {
 		'confirm_restart_2'        => 'Potwierdzasz? Zaczniesz od pierwszego zdania.',
 		'next_phrase_prefix'       => 'Następne zdanie: ',
 		'translation_placeholder'  => 'Napisz lub wymów tłumaczenie następnego zdania opowieści',
-		'hear_aria_label'          => 'Posłuchaj tłumaczenia po angielsku',
-		'hear_title'               => 'Posłuchaj tłumaczenia po angielsku (możesz też kliknąć na zdanie)',
-		'mic_label'                => 'Przytrzymaj, aby wymówić zdanie…',
-		'mic_hint'                 => '(To bardziej skuteczne w nauce angielskiego)',
-		'mic_aria_label'           => 'Przytrzymaj, aby wymówić zdanie',
+		'hear_aria_label'          => 'Posłuchaj tłumaczenia w języku %s',
+		'hear_title'               => 'Posłuchaj tłumaczenia w języku %s (możesz też kliknąć na zdanie)',
+		'mic_label'                => 'Przytrzymaj, aby wymówić zdanie w języku %s',
+		'mic_hint'                 => '(Ćwicz w języku %s)',
+		'mic_aria_label'           => 'Przytrzymaj, aby wymówić zdanie w języku %s',
 		'mic_feedback_listening'   => 'Nasłuchiwanie…',
 		'mic_unavailable_title'    => 'Rozpoznawanie mowy nie jest obsługiwane',
 		'mic_err_not_allowed'      => 'Mikrofon niedozwolony: sprawdź uprawnienia witryny w przeglądarce.',
@@ -331,11 +515,11 @@ function lls_get_builtin_ui_strings_es() {
 		'confirm_restart_2'        => '¿Confirmas? Tendrás que empezar desde la primera frase.',
 		'next_phrase_prefix'       => 'Siguiente frase: ',
 		'translation_placeholder'  => 'Escribe o pronuncia la traducción de la siguiente frase de la historia',
-		'hear_aria_label'          => 'Escuchar la traducción al inglés',
-		'hear_title'               => 'Escuchar la traducción al inglés (también puedes hacer clic en la frase)',
-		'mic_label'                => 'Mantén pulsado para decir la frase en voz alta…',
-		'mic_hint'                 => '(Es más eficaz para aprender inglés)',
-		'mic_aria_label'           => 'Mantén pulsado para pronunciar la frase',
+		'hear_aria_label'          => 'Escuchar la traducción en %s',
+		'hear_title'               => 'Escuchar la traducción en %s (también puedes hacer clic en la frase)',
+		'mic_label'                => 'Mantén pulsado para pronunciar la frase en %s',
+		'mic_hint'                 => '(Practica en %s)',
+		'mic_aria_label'           => 'Mantén pulsado para pronunciar la frase en %s',
 		'mic_feedback_listening'   => 'Escuchando…',
 		'mic_unavailable_title'    => 'Reconocimiento de voz no compatible',
 		'mic_err_not_allowed'      => 'Micrófono no permitido: revisa los permisos del sitio en el navegador.',

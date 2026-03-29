@@ -158,6 +158,14 @@
 	color: var(--lls-ink);
 }
 
+.lls-story-title-target {
+	margin: -0.15em 0 0.5em;
+	font-size: 1.15rem;
+	font-weight: 500;
+	line-height: 1.35;
+	color: var(--lls-ink-soft);
+}
+
 .lls-progress-label {
 	font-size: 0.9rem;
 	color: var(--lls-ink-soft);

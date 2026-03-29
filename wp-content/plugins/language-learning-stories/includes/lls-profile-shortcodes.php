@@ -90,6 +90,173 @@ function lls_get_user_total_completed_sentences( $user_id ) {
 }
 
 /**
+ * User meta: log frasi completate (text_it, text_en, story_id, sentence_index, ts).
+ *
+ * @return string
+ */
+function lls_completed_phrases_log_meta_key() {
+	return '_lls_completed_phrases_log';
+}
+
+/**
+ * Aggiunge al log le frasi completate tra due indici (escluso il vecchio, incluso il nuovo-1).
+ *
+ * @param int $user_id        ID utente.
+ * @param int $story_id       ID storia.
+ * @param int $old_completed  Valore precedente di `completed`.
+ * @param int $new_completed  Nuovo valore di `completed`.
+ */
+function lls_log_completed_phrases_range( $user_id, $story_id, $old_completed, $new_completed ) {
+	$user_id       = (int) $user_id;
+	$story_id      = (int) $story_id;
+	$old_completed = max( 0, (int) $old_completed );
+	$new_completed = max( 0, (int) $new_completed );
+	if ( $user_id <= 0 || $story_id <= 0 || $new_completed <= $old_completed ) {
+		return;
+	}
+	$sentences = get_post_meta( $story_id, '_lls_sentences', true );
+	if ( ! is_array( $sentences ) ) {
+		return;
+	}
+	$log = get_user_meta( $user_id, lls_completed_phrases_log_meta_key(), true );
+	if ( ! is_array( $log ) ) {
+		$log = [];
+	}
+	$now = current_time( 'mysql' );
+	$ts  = current_time( 'timestamp' );
+	for ( $i = $old_completed; $i < $new_completed; $i++ ) {
+		if ( ! isset( $sentences[ $i ] ) || ! is_array( $sentences[ $i ] ) ) {
+			continue;
+		}
+		$row   = $sentences[ $i ];
+		$text_it = isset( $row['text_it'] ) ? wp_strip_all_tags( (string) $row['text_it'] ) : '';
+		$text_en = isset( $row['main_translation'] ) ? wp_strip_all_tags( (string) $row['main_translation'] ) : '';
+		if ( $text_it === '' && $text_en !== '' ) {
+			$text_it = $text_en;
+		}
+		if ( $text_en === '' && $text_it !== '' ) {
+			$text_en = $text_it;
+		}
+		$log[] = [
+			'story_id'         => $story_id,
+			'sentence_index'   => $i,
+			'text_it'          => $text_it,
+			'text_en'          => $text_en,
+			'text'             => $text_it,
+			'at'               => $now,
+			'ts'               => $ts,
+			'backfill'         => false,
+		];
+	}
+	/**
+	 * Numero massimo di voci nel log frasi (le più vecchie vengono rimosse).
+	 *
+	 * @param int $max Predefinito 2000.
+	 */
+	$max = (int) apply_filters( 'lls_max_completed_phrases_log', 2000 );
+	if ( $max > 0 && count( $log ) > $max ) {
+		$log = array_slice( $log, -$max );
+	}
+	update_user_meta( $user_id, lls_completed_phrases_log_meta_key(), $log );
+}
+
+/**
+ * Una tantum: se il log è vuoto ma c’è progresso salvato, ricostruisce le voci senza data precisa.
+ *
+ * @param int $user_id ID utente.
+ */
+function lls_backfill_completed_phrases_log_if_needed( $user_id ) {
+	$user_id = (int) $user_id;
+	if ( $user_id <= 0 ) {
+		return;
+	}
+	if ( get_user_meta( $user_id, '_lls_completed_phrases_backfilled', true ) === '1' ) {
+		return;
+	}
+	$log = get_user_meta( $user_id, lls_completed_phrases_log_meta_key(), true );
+	if ( is_array( $log ) && count( $log ) > 0 ) {
+		update_user_meta( $user_id, '_lls_completed_phrases_backfilled', '1' );
+		return;
+	}
+	$built = [];
+	foreach ( lls_collect_user_progress_story_ids( $user_id ) as $story_id ) {
+		$saved     = get_user_meta( $user_id, '_lls_progress_' . $story_id, true );
+		$completed = ( is_array( $saved ) && isset( $saved['completed'] ) ) ? max( 0, (int) $saved['completed'] ) : 0;
+		$sentences = get_post_meta( $story_id, '_lls_sentences', true );
+		if ( ! is_array( $sentences ) ) {
+			continue;
+		}
+		$n = count( $sentences );
+		for ( $i = 0; $i < $completed && $i < $n; $i++ ) {
+			if ( ! isset( $sentences[ $i ] ) || ! is_array( $sentences[ $i ] ) ) {
+				continue;
+			}
+			$row     = $sentences[ $i ];
+			$text_it = isset( $row['text_it'] ) ? wp_strip_all_tags( (string) $row['text_it'] ) : '';
+			$text_en = isset( $row['main_translation'] ) ? wp_strip_all_tags( (string) $row['main_translation'] ) : '';
+			if ( $text_it === '' && $text_en !== '' ) {
+				$text_it = $text_en;
+			}
+			if ( $text_en === '' && $text_it !== '' ) {
+				$text_en = $text_it;
+			}
+			$built[] = [
+				'story_id'       => $story_id,
+				'sentence_index' => $i,
+				'text_it'        => $text_it,
+				'text_en'        => $text_en,
+				'text'           => $text_it,
+				'at'             => '',
+				'ts'             => 0,
+				'backfill'       => true,
+			];
+		}
+	}
+	if ( count( $built ) > 0 ) {
+		update_user_meta( $user_id, lls_completed_phrases_log_meta_key(), $built );
+	}
+	update_user_meta( $user_id, '_lls_completed_phrases_backfilled', '1' );
+}
+
+/**
+ * Risolve italiano / inglese per una riga del log (supporta vecchie voci solo con `text`).
+ *
+ * @param array $row Voce log.
+ * @return array{ text_it: string, text_en: string }
+ */
+function lls_completed_phrase_resolve_texts( array $row ) {
+	$text_it = isset( $row['text_it'] ) ? (string) $row['text_it'] : '';
+	$text_en = isset( $row['text_en'] ) ? (string) $row['text_en'] : '';
+	if ( $text_it === '' && isset( $row['text'] ) ) {
+		$text_it = (string) $row['text'];
+	}
+	$story_id = isset( $row['story_id'] ) ? (int) $row['story_id'] : 0;
+	$idx      = isset( $row['sentence_index'] ) ? (int) $row['sentence_index'] : -1;
+	if ( ( $text_it === '' || $text_en === '' ) && $story_id > 0 && $idx >= 0 ) {
+		$sentences = get_post_meta( $story_id, '_lls_sentences', true );
+		if ( is_array( $sentences ) && isset( $sentences[ $idx ] ) && is_array( $sentences[ $idx ] ) ) {
+			$s = $sentences[ $idx ];
+			if ( $text_it === '' && isset( $s['text_it'] ) ) {
+				$text_it = wp_strip_all_tags( (string) $s['text_it'] );
+			}
+			if ( $text_en === '' && isset( $s['main_translation'] ) ) {
+				$text_en = wp_strip_all_tags( (string) $s['main_translation'] );
+			}
+		}
+	}
+	if ( $text_en === '' && $text_it !== '' ) {
+		$text_en = $text_it;
+	}
+	if ( $text_it === '' && $text_en !== '' ) {
+		$text_it = $text_en;
+	}
+	return [
+		'text_it' => $text_it,
+		'text_en' => $text_en,
+	];
+}
+
+/**
  * Ordina gli ID: prima _lls_recent_stories, poi gli altri per data modifica post decrescente.
  *
  * @param int   $user_id ID utente.
@@ -199,14 +366,15 @@ function lls_meta_query_stories_for_interface_lang( $lang ) {
 /**
  * HTML di un elemento elenco storia (stesso markup di [lls_profile_continue_stories]).
  *
- * @param WP_Post $post         Post storia.
- * @param int     $words        Parole riassunto.
- * @param int     $completed    Frasi completate.
- * @param int     $total        Frasi totali.
- * @param string  $button_label Testo pulsante (già tradotto).
+ * @param WP_Post          $post         Post storia.
+ * @param int              $words        Parole riassunto.
+ * @param int              $completed    Frasi completate.
+ * @param int              $total        Frasi totali.
+ * @param string           $button_label Testo pulsante «Continue» (già tradotto).
+ * @param array            $args         Opzioni: coin_gate (bool), enter_label (string).
  * @return string
  */
-function lls_get_profile_story_list_item_html( WP_Post $post, $words, $completed, $total, $button_label ) {
+function lls_get_profile_story_list_item_html( WP_Post $post, $words, $completed, $total, $button_label, $args = [] ) {
 	$words     = (int) $words;
 	$completed = max( 0, (int) $completed );
 	$total     = max( 0, (int) $total );
@@ -219,6 +387,18 @@ function lls_get_profile_story_list_item_html( WP_Post $post, $words, $completed
 		$completed,
 		$total
 	);
+	$args += [
+		'coin_gate'   => true,
+		'enter_label' => __( 'Enter the story', 'language-learning-stories' ),
+	];
+	$coin_gate = (bool) $args['coin_gate'] && function_exists( 'lls_user_can_access_story' );
+	$user_id   = is_user_logged_in() ? get_current_user_id() : 0;
+	$cost      = $coin_gate ? lls_get_story_coin_cost( $post->ID ) : 0;
+	$reward    = $coin_gate ? lls_get_story_coin_reward( $post->ID ) : 0;
+	$can_access = ! $coin_gate || ! function_exists( 'lls_user_can_access_story' ) || lls_user_can_access_story( $user_id, $post->ID );
+	$balance   = ( $coin_gate && $user_id > 0 && function_exists( 'lls_get_user_coin_balance' ) ) ? lls_get_user_coin_balance( $user_id ) : 0;
+	$can_afford = $cost <= 0 || $balance >= $cost;
+
 	$cat_list = taxonomy_exists( 'lls_story_category' )
 		? get_the_term_list( $post->ID, 'lls_story_category', '', ', ', '' )
 		: '';
@@ -232,11 +412,16 @@ function lls_get_profile_story_list_item_html( WP_Post $post, $words, $completed
 		$tag_list = '';
 	}
 
+	$title_inner = esc_html( get_the_title( $post ) );
 	ob_start();
 	?>
-	<li class="lls-profile-continue__item">
+	<li class="lls-profile-continue__item<?php echo $coin_gate && $cost > 0 && ! $can_access ? ' lls-profile-continue__item--locked' : ''; ?>" data-lls-story-id="<?php echo esc_attr( (string) (int) $post->ID ); ?>">
 		<h3 class="lls-story-title">
-			<a href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( get_the_title( $post ) ); ?></a>
+			<?php if ( $can_access ) : ?>
+				<a href="<?php echo esc_url( $url ); ?>"><?php echo $title_inner; ?></a>
+			<?php else : ?>
+				<span class="lls-story-title__text"><?php echo $title_inner; ?></span>
+			<?php endif; ?>
 		</h3>
 		<?php if ( $cat_list || $tag_list ) : ?>
 			<div class="lls-profile-continue__tax">
@@ -257,6 +442,36 @@ function lls_get_profile_story_list_item_html( WP_Post $post, $words, $completed
 		<?php if ( $summary !== '' ) : ?>
 			<p class="lls-profile-continue__summary"><?php echo esc_html( $summary ); ?></p>
 		<?php endif; ?>
+		<?php if ( $coin_gate && ( $cost > 0 || $reward > 0 ) ) : ?>
+			<ul class="lls-story-coin-meta" role="list">
+				<?php if ( $cost > 0 ) : ?>
+					<li class="lls-story-coin-meta__item lls-story-coin-meta__item--cost">
+						<?php
+						echo esc_html(
+							sprintf(
+								/* translators: %d: coin cost */
+								__( 'Cost: %d coins', 'language-learning-stories' ),
+								$cost
+							)
+						);
+						?>
+					</li>
+				<?php endif; ?>
+				<?php if ( $reward > 0 ) : ?>
+					<li class="lls-story-coin-meta__item lls-story-coin-meta__item--reward">
+						<?php
+						echo esc_html(
+							sprintf(
+								/* translators: %d: coins earned on completion */
+								__( 'Reward when you finish: %d coins', 'language-learning-stories' ),
+								$reward
+							)
+						);
+						?>
+					</li>
+				<?php endif; ?>
+			</ul>
+		<?php endif; ?>
 		<div class="lls-profile-continue__progress-stack">
 			<div class="lls-progress-bar-wrap" role="progressbar" aria-valuemin="0" aria-valuemax="<?php echo esc_attr( (string) $total ); ?>" aria-valuenow="<?php echo esc_attr( (string) $completed ); ?>" aria-label="<?php echo esc_attr( $aria_pb ); ?>">
 				<div class="lls-progress-bar" style="width: <?php echo esc_attr( (string) $pct ); ?>%;"></div>
@@ -266,7 +481,42 @@ function lls_get_profile_story_list_item_html( WP_Post $post, $words, $completed
 			</div>
 		</div>
 		<p class="lls-continua-wrap">
-			<a class="lls-btn lls-btn-continua" href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( $button_label ); ?></a>
+			<?php if ( $can_access ) : ?>
+				<?php
+				$cta = ( $completed > 0 ) ? $button_label : (string) $args['enter_label'];
+				?>
+				<a class="lls-btn lls-btn-continua" href="<?php echo esc_url( $url ); ?>"><?php echo esc_html( $cta ); ?></a>
+			<?php elseif ( $coin_gate && $cost > 0 ) : ?>
+				<?php if ( ! is_user_logged_in() ) : ?>
+					<a class="lls-btn lls-btn-continua lls-btn--unlock-login" href="<?php echo esc_url( wp_login_url( function_exists( 'lls_get_frontend_request_url' ) ? lls_get_frontend_request_url() : home_url( '/' ) ) ); ?>"><?php esc_html_e( 'Log in to unlock', 'language-learning-stories' ); ?></a>
+				<?php elseif ( ! $can_afford ) : ?>
+					<button type="button" class="lls-btn lls-btn-continua" disabled>
+						<?php
+						echo esc_html(
+							sprintf(
+								/* translators: %d: coin cost */
+								__( 'Unlock this story for %d coins', 'language-learning-stories' ),
+								$cost
+							)
+						);
+						?>
+					</button>
+					<span class="lls-unlock-feedback lls-unlock-feedback--error"><?php esc_html_e( 'Not enough coins.', 'language-learning-stories' ); ?></span>
+				<?php else : ?>
+					<button type="button" class="lls-btn lls-btn-continua lls-unlock-story-btn" data-lls-unlock-story="<?php echo esc_attr( (string) (int) $post->ID ); ?>">
+						<?php
+						echo esc_html(
+							sprintf(
+								/* translators: %d: coin cost */
+								__( 'Unlock this story for %d coins', 'language-learning-stories' ),
+								$cost
+							)
+						);
+						?>
+					</button>
+					<span class="lls-unlock-feedback lls-unlock-feedback--msg" hidden></span>
+				<?php endif; ?>
+			<?php endif; ?>
 		</p>
 	</li>
 	<?php
@@ -791,6 +1041,325 @@ function lls_shortcode_profile_account( $atts ) {
 	return function_exists( 'lls_wrap_shortcode_html' ) ? lls_wrap_shortcode_html( $inner, 'block' ) : $inner;
 }
 
+/**
+ * Shortcode [lls_total_phrases] / [total_phrases]: «Phrases: N», stesso markup di [coin]; click → /phrases (link 1/0, href).
+ *
+ * @param string[]|string $atts    Attributi: link, href.
+ * @param string          $content Non usato.
+ * @param string          $tag     Nome shortcode.
+ * @return string
+ */
+function lls_shortcode_total_phrases( $atts, $content = '', $tag = '' ) {
+	if ( ! function_exists( 'lls_wrap_shortcode_html' ) || ! function_exists( 'lls_get_user_total_completed_sentences' ) ) {
+		return '';
+	}
+
+	$atts = shortcode_atts(
+		[
+			'link' => '1',
+			'href' => '/phrases',
+		],
+		is_array( $atts ) ? $atts : [],
+		$tag !== '' ? $tag : 'total_phrases'
+	);
+
+	$user_id = get_current_user_id();
+	$total   = $user_id ? lls_get_user_total_completed_sentences( $user_id ) : 0;
+	/**
+	 * Totale frasi completate mostrato dallo shortcode [lls_total_phrases].
+	 *
+	 * @param int $total   Conteggio.
+	 * @param int $user_id ID utente (0 se ospite).
+	 */
+	$total = (int) apply_filters( 'lls_total_phrases_shortcode_count', $total, $user_id );
+
+	$label = __( 'Phrases:', 'language-learning-stories' );
+	$inner = '<span class="lls-coin__label">' . esc_html( $label ) . '</span>'
+		. '<span class="lls-coin__value" data-lls-total-phrases>' . esc_html( (string) $total ) . '</span>';
+
+	$use_link = (string) $atts['link'] === '1' || strtolower( (string) $atts['link'] ) === 'true' || strtolower( (string) $atts['link'] ) === 'yes';
+	$href_raw = trim( (string) $atts['href'] );
+	if ( $href_raw === '' ) {
+		$href_raw = '/phrases';
+	}
+	$page_url = ( strpos( $href_raw, 'http://' ) === 0 || strpos( $href_raw, 'https://' ) === 0 )
+		? $href_raw
+		: home_url( '/' . ltrim( $href_raw, '/' ) );
+	/**
+	 * URL della pagina frasi aperta dal click su [lls_total_phrases].
+	 *
+	 * @param string $page_url URL assoluto.
+	 * @param int    $user_id  ID utente (0 se ospite).
+	 */
+	$page_url = (string) apply_filters( 'lls_total_phrases_shortcode_url', $page_url, $user_id );
+
+	if ( $use_link ) {
+		$aria = sprintf(
+			/* translators: 1: "Phrases:" label, 2: count */
+			__( '%1$s %2$s — view phrases page', 'language-learning-stories' ),
+			$label,
+			(string) $total
+		);
+		$html = '<a class="lls-coin lls-coin--link" href="' . esc_url( $page_url ) . '" aria-label="' . esc_attr( $aria ) . '">'
+			. '<span class="lls-coin__live" role="status" aria-live="polite" aria-atomic="true">'
+			. $inner
+			. '</span>'
+			. '</a>';
+	} else {
+		$html = '<span class="lls-coin" role="status" aria-live="polite" aria-atomic="true">'
+			. $inner
+			. '</span>';
+	}
+
+	return lls_wrap_shortcode_html( $html, 'contents' );
+}
+
+/**
+ * Shortcode: intestazione con totale frasi (grande) + elenco (inglese + italiano, TTS, storia, tassonomie).
+ *
+ * Uso: [lls_completed_phrases] [lls_completed_phrases limit="100" excerpt="140"]
+ *
+ * @param string[]|string $atts Attributi.
+ * @return string
+ */
+function lls_shortcode_completed_phrases( $atts ) {
+	if ( ! function_exists( 'lls_wrap_shortcode_html' ) ) {
+		return '';
+	}
+	if ( ! is_user_logged_in() ) {
+		$inner = '<p class="lls-completed-phrases--guest">' .
+			esc_html__( 'Log in to see the phrases you have completed.', 'language-learning-stories' ) .
+			'</p>';
+		return lls_wrap_shortcode_html( $inner, 'block' );
+	}
+
+	$atts = shortcode_atts(
+		[
+			'limit'   => '200',
+			'excerpt' => '0',
+		],
+		is_array( $atts ) ? $atts : [],
+		'lls_completed_phrases'
+	);
+
+	$limit   = max( 1, min( 500, (int) $atts['limit'] ) );
+	$excerpt = max( 0, min( 400, (int) $atts['excerpt'] ) );
+
+	$user_id = get_current_user_id();
+	if ( function_exists( 'lls_backfill_completed_phrases_log_if_needed' ) ) {
+		lls_backfill_completed_phrases_log_if_needed( $user_id );
+	}
+
+	$log = get_user_meta( $user_id, lls_completed_phrases_log_meta_key(), true );
+	if ( ! is_array( $log ) ) {
+		$log = [];
+	}
+
+	usort(
+		$log,
+		static function ( $a, $b ) {
+			$ta = isset( $a['ts'] ) ? (int) $a['ts'] : 0;
+			$tb = isset( $b['ts'] ) ? (int) $b['ts'] : 0;
+			if ( $tb !== $ta ) {
+				return $tb <=> $ta;
+			}
+			$sa = isset( $a['story_id'], $a['sentence_index'] ) ? ( (int) $a['story_id'] * 10000 + (int) $a['sentence_index'] ) : 0;
+			$sb = isset( $b['story_id'], $b['sentence_index'] ) ? ( (int) $b['story_id'] * 10000 + (int) $b['sentence_index'] ) : 0;
+			return $sb <=> $sa;
+		}
+	);
+
+	$total_phrases = count( $log );
+	if ( function_exists( 'lls_get_user_total_completed_sentences' ) ) {
+		$from_progress = (int) lls_get_user_total_completed_sentences( $user_id );
+		$from_progress = (int) apply_filters( 'lls_total_phrases_shortcode_count', $from_progress, $user_id );
+		$total_phrases = max( $total_phrases, $from_progress );
+	}
+
+	$log = array_slice( $log, 0, $limit );
+
+	if ( count( $log ) === 0 ) {
+		$inner = '<p class="lls-completed-phrases--empty">' .
+			esc_html__( 'No completed phrases yet. Finish sentences in a story — they will appear here.', 'language-learning-stories' ) .
+			'</p>';
+		return lls_wrap_shortcode_html( $inner, 'block' );
+	}
+
+	$icon_svg   = '<svg class="lls-completed-phrases__hear-icon" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor"><path d="M3 10v4h4l5 5V5L7 10H3zm13.5 2c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
+
+	$shown_count = count( $log );
+
+	ob_start();
+	?>
+	<div class="lls-completed-phrases">
+		<header
+			class="lls-completed-phrases__header"
+			aria-label="<?php
+			echo esc_attr(
+				sprintf(
+					/* translators: %d: total number of completed phrases */
+					_n(
+						'%d phrase completed in total',
+						'%d phrases completed in total',
+						$total_phrases,
+						'language-learning-stories'
+					),
+					$total_phrases
+				)
+			);
+			?>
+		">
+			<p class="lls-completed-phrases__total-line">
+				<span class="lls-completed-phrases__total-num" aria-hidden="true"><?php echo esc_html( (string) $total_phrases ); ?></span>
+				<span class="lls-completed-phrases__total-label" aria-hidden="true">
+					<?php
+					echo esc_html(
+						_n(
+							'phrase completed in total',
+							'phrases completed in total',
+							$total_phrases,
+							'language-learning-stories'
+						)
+					);
+					?>
+				</span>
+			</p>
+			<?php if ( $shown_count < $total_phrases ) : ?>
+				<p class="lls-completed-phrases__header-note">
+					<?php
+					echo esc_html(
+						sprintf(
+							/* translators: %d: how many phrases are listed below (limit) */
+							_n(
+								'Below: your latest %d phrase.',
+								'Below: your latest %d phrases.',
+								$shown_count,
+								'language-learning-stories'
+							),
+							$shown_count
+						)
+					);
+					?>
+				</p>
+			<?php endif; ?>
+		</header>
+		<ul class="lls-completed-phrases__list" role="list" aria-label="<?php echo esc_attr__( 'Completed phrases', 'language-learning-stories' ); ?>">
+			<?php
+			foreach ( $log as $row ) {
+				if ( ! is_array( $row ) ) {
+					continue;
+				}
+				$story_id = isset( $row['story_id'] ) ? (int) $row['story_id'] : 0;
+				$tx      = lls_completed_phrase_resolve_texts( $row );
+				$text_it = $tx['text_it'];
+				$text_en = $tx['text_en'];
+				if ( $excerpt > 0 ) {
+					if ( $text_en !== '' ) {
+						$text_en = wp_html_excerpt( $text_en, $excerpt, '…' );
+					}
+					if ( $text_it !== '' ) {
+						$text_it = wp_html_excerpt( $text_it, $excerpt, '…' );
+					}
+				}
+				$main_line = $text_en !== '' ? $text_en : $text_it;
+				$sub_line  = ( $text_it !== '' && $text_it !== $text_en && $text_en !== '' ) ? $text_it : '';
+				$story_title = '';
+				$story_url   = '';
+				if ( $story_id > 0 && get_post_type( $story_id ) === 'lls_story' && 'publish' === get_post_status( $story_id ) ) {
+					$story_title = get_the_title( $story_id );
+					$story_url   = get_permalink( $story_id );
+				} elseif ( $story_id > 0 ) {
+					$story_title = sprintf(
+						/* translators: %d: story ID */
+						__( 'Story #%d (unavailable)', 'language-learning-stories' ),
+						$story_id
+					);
+				}
+				$cat_list = '';
+				$tag_list = '';
+				if ( $story_id > 0 ) {
+					$cat_list = taxonomy_exists( 'lls_story_category' )
+						? get_the_term_list( $story_id, 'lls_story_category', '', ', ', '' )
+						: '';
+					$tag_list = taxonomy_exists( 'lls_story_tag' )
+						? get_the_term_list( $story_id, 'lls_story_tag', '', ', ', '' )
+						: '';
+					if ( is_wp_error( $cat_list ) || false === $cat_list ) {
+						$cat_list = '';
+					}
+					if ( is_wp_error( $tag_list ) || false === $tag_list ) {
+						$tag_list = '';
+					}
+				}
+				$speak_en = $text_en !== '' ? $text_en : '';
+				$speak_locale = 'en-US';
+				if ( $story_id > 0 && function_exists( 'lls_get_story_target_lang' ) && function_exists( 'lls_story_target_lang_speech_locale' ) ) {
+					$speak_locale = lls_story_target_lang_speech_locale( lls_get_story_target_lang( $story_id ) );
+				}
+				$hear_if = function_exists( 'lls_get_user_known_lang' ) ? lls_get_user_known_lang() : 'it';
+				$hear_tn = ( $story_id > 0 && function_exists( 'lls_get_target_lang_name_for_ui' ) && function_exists( 'lls_get_story_target_lang' ) )
+					? lls_get_target_lang_name_for_ui( lls_get_story_target_lang( $story_id ), $hear_if )
+					: '';
+				$hear_label = esc_attr(
+					$hear_tn !== ''
+						? sprintf(
+							/* translators: %s: target language name (e.g. inglese) */
+							__( 'Ascolta la traduzione in %s', 'language-learning-stories' ),
+							$hear_tn
+						)
+						: __( 'Listen to the phrase', 'language-learning-stories' )
+				);
+				?>
+				<li class="lls-completed-phrases__item">
+					<div class="lls-completed-phrases__phrase-block">
+						<div class="lls-completed-phrases__en-row">
+							<p class="lls-completed-phrases__en"><?php echo $main_line !== '' ? esc_html( $main_line ) : '—'; ?></p>
+							<?php if ( $speak_en !== '' ) : ?>
+								<button type="button" class="lls-completed-phrases__hear" data-lls-speak-en="<?php echo esc_attr( $speak_en ); ?>" data-lls-speak-locale="<?php echo esc_attr( $speak_locale ); ?>" aria-label="<?php echo esc_attr( $hear_label ); ?>">
+									<?php echo $icon_svg; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+								</button>
+							<?php endif; ?>
+						</div>
+						<?php if ( $sub_line !== '' ) : ?>
+							<p class="lls-completed-phrases__it"><?php echo esc_html( $sub_line ); ?></p>
+						<?php endif; ?>
+					</div>
+					<div class="lls-completed-phrases__meta">
+						<p class="lls-completed-phrases__story-line">
+							<?php if ( $story_url !== '' && $story_title !== '' ) : ?>
+								<a class="lls-completed-phrases__story-link" href="<?php echo esc_url( $story_url ); ?>"><?php echo esc_html( $story_title ); ?></a>
+							<?php else : ?>
+								<span class="lls-completed-phrases__story-link lls-completed-phrases__story-link--muted"><?php echo esc_html( $story_title !== '' ? $story_title : '—' ); ?></span>
+							<?php endif; ?>
+						</p>
+						<?php if ( $cat_list || $tag_list ) : ?>
+							<div class="lls-completed-phrases__tax">
+								<?php if ( $cat_list ) : ?>
+									<p class="lls-completed-phrases__tax-line">
+										<span class="lls-completed-phrases__tax-label"><?php esc_html_e( 'Categories', 'language-learning-stories' ); ?></span>
+										<span class="lls-completed-phrases__tax-list"><?php echo wp_kses_post( $cat_list ); ?></span>
+									</p>
+								<?php endif; ?>
+								<?php if ( $tag_list ) : ?>
+									<p class="lls-completed-phrases__tax-line">
+										<span class="lls-completed-phrases__tax-label"><?php esc_html_e( 'Tags', 'language-learning-stories' ); ?></span>
+										<span class="lls-completed-phrases__tax-list"><?php echo wp_kses_post( $tag_list ); ?></span>
+									</p>
+								<?php endif; ?>
+							</div>
+						<?php endif; ?>
+					</div>
+				</li>
+				<?php
+			}
+			?>
+		</ul>
+	</div>
+	<?php
+	$inner = (string) ob_get_clean();
+	return lls_wrap_shortcode_html( $inner, 'block' );
+}
+
 add_action(
 	'init',
 	static function () {
@@ -798,6 +1367,9 @@ add_action(
 		add_shortcode( 'lls_profile_continue_stories', 'lls_shortcode_profile_continue_stories' );
 		add_shortcode( 'lls_library_stories', 'lls_shortcode_library_stories' );
 		add_shortcode( 'lls_profile_account', 'lls_shortcode_profile_account' );
+		add_shortcode( 'lls_completed_phrases', 'lls_shortcode_completed_phrases' );
+		add_shortcode( 'lls_total_phrases', 'lls_shortcode_total_phrases' );
+		add_shortcode( 'total_phrases', 'lls_shortcode_total_phrases' );
 	},
 	12
 );

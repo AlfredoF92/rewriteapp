@@ -64,10 +64,11 @@ class LLS_Plugin {
 
 		add_action( 'restrict_manage_posts', [ $this, 'stories_admin_list_filters' ], 10, 2 );
 		add_action( 'pre_get_posts', [ $this, 'filter_stories_admin_list_query' ] );
+		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_story_list_admin_assets' ], 20 );
 	}
 
 	/**
-	 * Colonne extra nell’elenco storie: lingua interfaccia e numero frasi.
+	 * Colonne extra nell’elenco storie: anteprima, lingue, numero frasi.
 	 *
 	 * @param string[] $columns Colonne esistenti.
 	 * @return string[]
@@ -76,22 +77,65 @@ class LLS_Plugin {
 		$new = [];
 		foreach ( $columns as $key => $label ) {
 			$new[ $key ] = $label;
+			if ( 'cb' === $key ) {
+				$new['lls_thumb'] = __( 'Anteprima', 'language-learning-stories' );
+			}
 			if ( 'title' === $key ) {
-				$new['lls_lang']   = __( 'Lingua', 'language-learning-stories' );
-				$new['lls_frasi'] = __( 'Frasi', 'language-learning-stories' );
+				$new['lls_known_lang']  = __( 'Lingua interfaccia', 'language-learning-stories' );
+				$new['lls_target_lang'] = __( 'Lingua da imparare', 'language-learning-stories' );
+				$new['lls_frasi']       = __( 'Frasi', 'language-learning-stories' );
 			}
 		}
 		return $new;
 	}
 
 	/**
-	 * Contenuto colonne Lingua e Frasi.
+	 * Stili colonna anteprima elenco storie (admin).
+	 *
+	 * @param string $hook Suffisso pagina corrente.
+	 */
+	public function enqueue_story_list_admin_assets( $hook ) {
+		if ( 'edit.php' !== $hook ) {
+			return;
+		}
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		if ( ! $screen || 'lls_story' !== $screen->post_type ) {
+			return;
+		}
+		$handle = 'lls-story-list-admin';
+		wp_register_style( $handle, false, [], LLS_PLUGIN_VERSION );
+		wp_enqueue_style( $handle );
+		$css = '
+.wp-list-table .column-lls_thumb { width: 76px; text-align: center; }
+.wp-list-table .column-lls_thumb .lls-list-thumb-wrap { display: inline-block; max-width: 64px; margin: 0 auto; }
+.wp-list-table .column-lls_thumb img { display: block; width: 64px; height: 64px; object-fit: cover; border-radius: 6px; vertical-align: middle; box-shadow: 0 0 0 1px rgba(0,0,0,.08); }
+.wp-list-table .column-lls_thumb .lls-list-thumb--empty { display: inline-flex; width: 64px; height: 64px; align-items: center; justify-content: center; border-radius: 6px; background: #f0f0f1; color: #787c82; font-size: 11px; line-height: 1.2; text-align: center; padding: 4px; box-sizing: border-box; }
+.wp-list-table .column-lls_known_lang,
+.wp-list-table .column-lls_target_lang { width: 9%; }
+';
+		wp_add_inline_style( $handle, $css );
+	}
+
+	/**
+	 * Contenuto colonne anteprima, lingue e Frasi.
 	 *
 	 * @param string $column Nome colonna.
 	 * @param int    $post_id ID post.
 	 */
 	public function story_list_column_content( $column, $post_id ) {
-		if ( 'lls_lang' === $column ) {
+		if ( 'lls_thumb' === $column ) {
+			$aid = (int) get_post_meta( $post_id, '_lls_opening_image_id', true );
+			if ( $aid > 0 ) {
+				$img = wp_get_attachment_image( $aid, [ 128, 128 ], false, [ 'class' => 'lls-list-thumb-img', 'loading' => 'lazy' ] );
+				if ( $img ) {
+					echo '<span class="lls-list-thumb-wrap">' . $img . '</span>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+					return;
+				}
+			}
+			echo '<span class="lls-list-thumb--empty" aria-hidden="true">—</span>';
+			return;
+		}
+		if ( 'lls_known_lang' === $column ) {
 			$lang = get_post_meta( $post_id, '_lls_known_lang', true );
 			if ( ! in_array( $lang, lls_known_lang_codes(), true ) ) {
 				$lang = 'it';
@@ -102,6 +146,11 @@ class LLS_Plugin {
 				'es' => __( 'Spagnolo', 'language-learning-stories' ),
 			];
 			echo esc_html( isset( $labels[ $lang ] ) ? $labels[ $lang ] : $lang );
+			return;
+		}
+		if ( 'lls_target_lang' === $column ) {
+			$t = function_exists( 'lls_get_story_target_lang' ) ? lls_get_story_target_lang( $post_id ) : 'en';
+			echo esc_html( function_exists( 'lls_get_language_display_name_for_admin' ) ? lls_get_language_display_name_for_admin( $t ) : $t );
 			return;
 		}
 		if ( 'lls_frasi' === $column ) {
@@ -233,16 +282,34 @@ class LLS_Plugin {
 			return;
 		}
 
-		$lang_sel = isset( $_GET['lls_admin_lang'] ) ? sanitize_key( wp_unslash( $_GET['lls_admin_lang'] ) ) : '';
-		$cat_sel  = isset( $_GET['lls_admin_cat'] ) ? (int) $_GET['lls_admin_cat'] : 0;
-		$tag_sel  = isset( $_GET['lls_admin_tag'] ) ? (int) $_GET['lls_admin_tag'] : 0;
+		$lang_sel   = isset( $_GET['lls_admin_lang'] ) ? sanitize_key( wp_unslash( $_GET['lls_admin_lang'] ) ) : '';
+		$target_sel = isset( $_GET['lls_admin_target_lang'] ) ? sanitize_key( wp_unslash( $_GET['lls_admin_target_lang'] ) ) : '';
+		$cat_sel    = isset( $_GET['lls_admin_cat'] ) ? (int) $_GET['lls_admin_cat'] : 0;
+		$tag_sel    = isset( $_GET['lls_admin_tag'] ) ? (int) $_GET['lls_admin_tag'] : 0;
 
 		?>
-		<select name="lls_admin_lang" id="lls_admin_lang" class="postform" style="float:none;display:inline-block;max-width:14rem;margin-right:8px;">
-			<option value=""><?php esc_html_e( 'Tutte le lingue', 'language-learning-stories' ); ?></option>
+		<label for="lls_admin_lang" class="screen-reader-text"><?php esc_html_e( 'Filtra per lingua interfaccia', 'language-learning-stories' ); ?></label>
+		<select name="lls_admin_lang" id="lls_admin_lang" class="postform" style="float:none;display:inline-block;max-width:16rem;margin-right:8px;" title="<?php esc_attr_e( 'Lingua interfaccia della storia', 'language-learning-stories' ); ?>">
+			<option value=""><?php esc_html_e( 'Tutte le lingue interfaccia', 'language-learning-stories' ); ?></option>
 			<option value="it" <?php selected( $lang_sel, 'it' ); ?>><?php esc_html_e( 'Italiano', 'language-learning-stories' ); ?></option>
 			<option value="pl" <?php selected( $lang_sel, 'pl' ); ?>><?php esc_html_e( 'Polacco', 'language-learning-stories' ); ?></option>
 			<option value="es" <?php selected( $lang_sel, 'es' ); ?>><?php esc_html_e( 'Spagnolo', 'language-learning-stories' ); ?></option>
+		</select>
+		<label for="lls_admin_target_lang" class="screen-reader-text"><?php esc_html_e( 'Filtra per lingua da imparare', 'language-learning-stories' ); ?></label>
+		<select name="lls_admin_target_lang" id="lls_admin_target_lang" class="postform" style="float:none;display:inline-block;max-width:16rem;margin-right:8px;" title="<?php esc_attr_e( 'Lingua da imparare (lingua della storia)', 'language-learning-stories' ); ?>">
+			<option value=""><?php esc_html_e( 'Tutte le lingue da imparare', 'language-learning-stories' ); ?></option>
+			<?php
+			if ( function_exists( 'lls_story_target_lang_codes' ) ) {
+				foreach ( lls_story_target_lang_codes() as $code ) {
+					printf(
+						'<option value="%1$s" %2$s>%3$s</option>',
+						esc_attr( $code ),
+						selected( $target_sel, $code, false ),
+						esc_html( function_exists( 'lls_get_language_display_name_for_admin' ) ? lls_get_language_display_name_for_admin( $code ) : $code )
+					);
+				}
+			}
+			?>
 		</select>
 		<?php
 		wp_dropdown_categories(
@@ -324,6 +391,37 @@ class LLS_Plugin {
 				$meta_query[] = [
 					'key'   => '_lls_known_lang',
 					'value' => $lang,
+				];
+			}
+			$query->set( 'meta_query', $meta_query );
+		}
+
+		$target = isset( $_GET['lls_admin_target_lang'] ) ? sanitize_key( wp_unslash( $_GET['lls_admin_target_lang'] ) ) : '';
+		if ( $target && function_exists( 'lls_story_target_lang_codes' ) && in_array( $target, lls_story_target_lang_codes(), true ) ) {
+			$meta_query = $query->get( 'meta_query' );
+			$meta_query = is_array( $meta_query ) ? $meta_query : [];
+			if ( 'en' === $target ) {
+				$meta_query[] = [
+					'relation' => 'OR',
+					[
+						'key'     => '_lls_target_lang',
+						'compare' => 'NOT EXISTS',
+					],
+					[
+						'key'     => '_lls_target_lang',
+						'value'   => '',
+						'compare' => '=',
+					],
+					[
+						'key'     => '_lls_target_lang',
+						'value'   => 'en',
+						'compare' => '=',
+					],
+				];
+			} else {
+				$meta_query[] = [
+					'key'   => '_lls_target_lang',
+					'value' => $target,
 				];
 			}
 			$query->set( 'meta_query', $meta_query );
@@ -1304,13 +1402,64 @@ class LLS_Plugin {
 		}
 		$sentences = array_values( $sentences );
 
+		$post_id_admin = get_the_ID();
+		$known_admin   = get_post_meta( $post_id_admin, '_lls_known_lang', true );
+		if ( ! in_array( $known_admin, lls_known_lang_codes(), true ) ) {
+			$known_admin = 'it';
+		}
+		$target_admin = function_exists( 'lls_get_story_target_lang' ) ? lls_get_story_target_lang( $post_id_admin ) : 'en';
+		$known_name   = lls_get_language_display_name_for_admin( $known_admin );
+		$target_name  = lls_get_language_display_name_for_admin( $target_admin );
+		$lbl_known    = sprintf(
+			/* translators: %s: language name */
+			__( 'Frase in %s', 'language-learning-stories' ),
+			$known_name
+		);
+		$lbl_target   = sprintf(
+			/* translators: %s: language name */
+			__( 'Frase in %s (appare nella storia)', 'language-learning-stories' ),
+			$target_name
+		);
+		$lbl_alt1     = sprintf(
+			__( 'Alternativa in %s 1', 'language-learning-stories' ),
+			$target_name
+		);
+		$lbl_alt2     = sprintf(
+			__( 'Alternativa in %s 2', 'language-learning-stories' ),
+			$target_name
+		);
+
 		wp_localize_script(
 			'lls-admin-script',
 			'llsAdmin',
 			[
-				'sentences'      => $sentences,
-				'images'         => is_array( $images ) ? $images : [],
-				'i18n'           => [
+				'sentences'           => $sentences,
+				'images'              => is_array( $images ) ? $images : [],
+				'knownLang'           => $known_admin,
+				'targetLang'          => $target_admin,
+				'knownLangDisplay'    => $known_name,
+				'sentenceFieldLabels' => [
+					'textIt'          => $lbl_known,
+					'mainTranslation' => $lbl_target,
+					'alt1'            => $lbl_alt1,
+					'alt2'            => $lbl_alt2,
+				],
+				'csvExportHeaders'    => [
+					__( 'Numero', 'language-learning-stories' ),
+					$lbl_known,
+					$lbl_target,
+					$lbl_alt1,
+					$lbl_alt2,
+					__( 'Consigli grammaticali', 'language-learning-stories' ),
+				],
+				'csvPreviewHeaders'   => [
+					'N°',
+					/* translators: %s: short language name for CSV column */
+					sprintf( __( 'Frase (%s)', 'language-learning-stories' ), $known_name ),
+					$lbl_target,
+					__( 'Azione', 'language-learning-stories' ),
+				],
+				'i18n'                => [
 					'addSentence'         => __( 'Aggiungi Frase', 'language-learning-stories' ),
 					'edit'                => __( 'Modifica', 'language-learning-stories' ),
 					'delete'              => __( 'Elimina', 'language-learning-stories' ),
@@ -1321,8 +1470,11 @@ class LLS_Plugin {
 					'removeImage'         => __( 'Rimuovi immagine', 'language-learning-stories' ),
 					'confirmDelete'       => __( 'Sei sicuro di voler eliminare questa frase?', 'language-learning-stories' ),
 					'confirmDeleteImage'  => __( 'Sei sicuro di voler eliminare questo box immagine?', 'language-learning-stories' ),
+					'csvDupWarnTitle'     => __( 'Frasi duplicate nel file:', 'language-learning-stories' ),
+					/* translators: 1: unique count, 2: language name, 3: row count */
+					'csvDupWarnBody'      => __( 'risultano %1$d frasi distinte nella colonna «%2$s» su %3$d righe. Il CSV ripete spesso la stessa riga: non è un errore di import. Rigenera il file (es. con ChatGPT) chiedendo una frase diversa per ogni riga, in ordine, che formino un’unica storia.', 'language-learning-stories' ),
 				],
-				'nonce'          => wp_create_nonce( 'lls_admin_nonce' ),
+				'nonce'               => wp_create_nonce( 'lls_admin_nonce' ),
 			]
 		);
 	}
@@ -1336,6 +1488,7 @@ class LLS_Plugin {
 		if ( ! in_array( $known_lang, lls_known_lang_codes(), true ) ) {
 			$known_lang = 'it';
 		}
+		$target_lang = function_exists( 'lls_get_story_target_lang' ) ? lls_get_story_target_lang( $post->ID ) : 'en';
 		$coin_cost   = function_exists( 'lls_get_story_coin_cost' ) ? lls_get_story_coin_cost( $post->ID ) : 0;
 		$coin_reward = function_exists( 'lls_get_story_coin_reward' ) ? lls_get_story_coin_reward( $post->ID ) : 0;
 		?>
@@ -1347,7 +1500,33 @@ class LLS_Plugin {
 					<option value="pl" <?php selected( $known_lang, 'pl' ); ?>><?php esc_html_e( 'Polacco', 'language-learning-stories' ); ?></option>
 					<option value="es" <?php selected( $known_lang, 'es' ); ?>><?php esc_html_e( 'Spagnolo', 'language-learning-stories' ); ?></option>
 				</select><br>
-				<small class="description"><?php esc_html_e( 'Testi del front-end (pulsanti, titoli, messaggi) per questa storia. La lingua da imparare resta sempre l’inglese.', 'language-learning-stories' ); ?></small>
+				<small class="description"><?php esc_html_e( 'Lingua dei testi di interfaccia (pulsanti, titoli, messaggi) per questa storia.', 'language-learning-stories' ); ?></small>
+			</p>
+			<p>
+				<label for="lls_target_lang"><strong><?php esc_html_e( 'Lingua da imparare (lingua della storia)', 'language-learning-stories' ); ?></strong></label><br>
+				<select name="lls_target_lang" id="lls_target_lang" style="max-width:100%;">
+					<?php
+					foreach ( lls_story_target_lang_codes() as $code ) {
+						printf(
+							'<option value="%1$s" %2$s>%3$s</option>',
+							esc_attr( $code ),
+							selected( $target_lang, $code, false ),
+							esc_html( lls_get_language_display_name_for_admin( $code ) )
+						);
+					}
+					?>
+				</select><br>
+				<small class="description"><?php esc_html_e( 'Lingua in cui l’utente scrive e ascolta la traduzione principale (microfono e sintesi vocale). Predefinito: inglese.', 'language-learning-stories' ); ?></small>
+			</p>
+			<?php
+			$title_in_target = function_exists( 'lls_get_story_title_in_target_lang' ) ? lls_get_story_title_in_target_lang( $post->ID ) : '';
+			$target_name_for_title = lls_get_language_display_name_for_admin( $target_lang );
+			?>
+			<p>
+				<label for="lls_title_in_target_lang"><strong><?php echo esc_html( sprintf( /* translators: %s: language name (e.g. Inglese) */ __( 'Titolo tradotto (%s)', 'language-learning-stories' ), $target_name_for_title ) ); ?></strong></label><br>
+				<input type="text" class="large-text" name="lls_title_in_target_lang" id="lls_title_in_target_lang" value="<?php echo esc_attr( $title_in_target ); ?>" placeholder="<?php echo esc_attr( sprintf( /* translators: %s: language name */ __( 'Titolo della storia in %s', 'language-learning-stories' ), $target_name_for_title ) ); ?>">
+				<br>
+				<small class="description"><?php esc_html_e( 'Opzionale. Il campo «Titolo» del post è nella lingua interfaccia; qui puoi indicare come si intitola la storia nella lingua da imparare. Comparirà sotto il titolo principale nella pagina della storia.', 'language-learning-stories' ); ?></small>
 			</p>
 			<p>
 				<strong><?php esc_html_e( 'Immagine di apertura', 'language-learning-stories' ); ?></strong><br>
@@ -1396,6 +1575,12 @@ class LLS_Plugin {
 
 		$sentences = is_array( $sentences ) ? $sentences : [];
 		$images    = is_array( $images ) ? $images : [];
+
+		$known_lang = get_post_meta( $post->ID, '_lls_known_lang', true );
+		if ( ! in_array( $known_lang, lls_known_lang_codes(), true ) ) {
+			$known_lang = 'it';
+		}
+		$target_lang = function_exists( 'lls_get_story_target_lang' ) ? lls_get_story_target_lang( $post->ID ) : 'en';
 		?>
 		<div class="lls-sentences-wrapper">
 			<div class="lls-sentences-header">
@@ -1411,7 +1596,7 @@ class LLS_Plugin {
 				<?php
 				$index = 1;
 				foreach ( $sentences as $sentence ) {
-					$this->render_sentence_card( $index, $sentence );
+					$this->render_sentence_card( $index, $sentence, $known_lang, $target_lang );
 					$index++;
 				}
 				?>
@@ -1432,7 +1617,29 @@ class LLS_Plugin {
 		<?php
 	}
 
-	private function render_sentence_card( $index, $sentence ) {
+	private function render_sentence_card( $index, $sentence, $known_lang = 'it', $target_lang = 'en' ) {
+		$known_lang  = in_array( $known_lang, lls_known_lang_codes(), true ) ? $known_lang : 'it';
+		$target_lang = in_array( $target_lang, lls_story_target_lang_codes(), true ) ? $target_lang : 'en';
+		$label_known  = sprintf(
+			/* translators: %s: language name (e.g. Italiano) */
+			__( 'Frase in %s', 'language-learning-stories' ),
+			lls_get_language_display_name_for_admin( $known_lang )
+		);
+		$label_target = sprintf(
+			/* translators: %s: language name (e.g. Inglese) */
+			__( 'Frase in %s (appare nella storia)', 'language-learning-stories' ),
+			lls_get_language_display_name_for_admin( $target_lang )
+		);
+		$label_alt1   = sprintf(
+			/* translators: %s: target language name */
+			__( 'Alternativa in %s 1', 'language-learning-stories' ),
+			lls_get_language_display_name_for_admin( $target_lang )
+		);
+		$label_alt2   = sprintf(
+			/* translators: %s: target language name */
+			__( 'Alternativa in %s 2', 'language-learning-stories' ),
+			lls_get_language_display_name_for_admin( $target_lang )
+		);
 		$text_it        = isset( $sentence['text_it'] ) ? (string) $sentence['text_it'] : '';
 		$main_trans     = isset( $sentence['main_translation'] ) ? (string) $sentence['main_translation'] : '';
 		$alt1           = isset( $sentence['alt1'] ) ? (string) $sentence['alt1'] : '';
@@ -1450,25 +1657,25 @@ class LLS_Plugin {
 			<div class="lls-sentence-body">
 				<p>
 					<label>
-						<strong><?php esc_html_e( 'Frase in italiano', 'language-learning-stories' ); ?></strong><br>
+						<strong><?php echo esc_html( $label_known ); ?></strong><br>
 						<textarea name="lls_sentences[text_it][]" class="widefat" rows="2"><?php echo esc_textarea( $text_it ); ?></textarea>
 					</label>
 				</p>
 				<p>
 					<label>
-						<strong><?php esc_html_e( 'Traduzione principale (appare nella storia)', 'language-learning-stories' ); ?></strong><br>
+						<strong><?php echo esc_html( $label_target ); ?></strong><br>
 						<textarea name="lls_sentences[main_translation][]" class="widefat" rows="2"><?php echo esc_textarea( $main_trans ); ?></textarea>
 					</label>
 				</p>
 				<p>
 					<label>
-						<strong><?php esc_html_e( 'Traduzione alternativa 1', 'language-learning-stories' ); ?></strong><br>
+						<strong><?php echo esc_html( $label_alt1 ); ?></strong><br>
 						<input type="text" name="lls_sentences[alt1][]" class="widefat" value="<?php echo esc_attr( $alt1 ); ?>">
 					</label>
 				</p>
 				<p>
 					<label>
-						<strong><?php esc_html_e( 'Traduzione alternativa 2', 'language-learning-stories' ); ?></strong><br>
+						<strong><?php echo esc_html( $label_alt2 ); ?></strong><br>
 						<input type="text" name="lls_sentences[alt2][]" class="widefat" value="<?php echo esc_attr( $alt2 ); ?>">
 					</label>
 				</p>
@@ -1550,6 +1757,23 @@ class LLS_Plugin {
 			$known_lang = 'it';
 		}
 		update_post_meta( $post_id, '_lls_known_lang', $known_lang );
+
+		$target_lang = isset( $_POST['lls_target_lang'] ) ? sanitize_text_field( wp_unslash( $_POST['lls_target_lang'] ) ) : 'en';
+		if ( ! in_array( $target_lang, lls_story_target_lang_codes(), true ) ) {
+			$target_lang = 'en';
+		}
+		if ( function_exists( 'lls_story_target_lang_meta_key' ) ) {
+			update_post_meta( $post_id, lls_story_target_lang_meta_key(), $target_lang );
+		}
+
+		$title_in_target = isset( $_POST['lls_title_in_target_lang'] ) ? sanitize_text_field( wp_unslash( $_POST['lls_title_in_target_lang'] ) ) : '';
+		if ( function_exists( 'lls_story_title_in_target_lang_meta_key' ) ) {
+			if ( '' === $title_in_target ) {
+				delete_post_meta( $post_id, lls_story_title_in_target_lang_meta_key() );
+			} else {
+				update_post_meta( $post_id, lls_story_title_in_target_lang_meta_key(), $title_in_target );
+			}
+		}
 
 		$coin_cost = isset( $_POST['lls_story_coin_cost'] ) ? max( 0, (int) $_POST['lls_story_coin_cost'] ) : 0;
 		$coin_reward = isset( $_POST['lls_story_coin_reward'] ) ? max( 0, (int) $_POST['lls_story_coin_reward'] ) : 0;
@@ -1661,7 +1885,12 @@ class LLS_Plugin {
 		if ( ! in_array( $known_lang, lls_known_lang_codes(), true ) ) {
 			$known_lang = 'it';
 		}
+		$target_lang = function_exists( 'lls_get_story_target_lang' ) ? lls_get_story_target_lang( $post_id ) : 'en';
+		$target_speech_locale = function_exists( 'lls_story_target_lang_speech_locale' ) ? lls_story_target_lang_speech_locale( $target_lang ) : 'en-US';
 		$ui_strings = lls_get_merged_ui_strings( $known_lang );
+		if ( function_exists( 'lls_apply_target_lang_placeholders_to_ui_strings' ) ) {
+			$ui_strings = lls_apply_target_lang_placeholders_to_ui_strings( $ui_strings, $target_lang, $known_lang );
+		}
 
 		$opening_image_url = '';
 		if ( $opening_image_id ) {
@@ -1690,7 +1919,7 @@ class LLS_Plugin {
 			'lls-frontend-style',
 			$plugin_url . 'assets/lls-frontend.css',
 			[ 'lls-frontend-font' ],
-			'0.2.0'
+			'0.2.1'
 		);
 
 		$story_bg_abs = content_url( 'uploads/2026/03/5.jpg' );
@@ -1716,7 +1945,7 @@ class LLS_Plugin {
 			'lls-frontend-script',
 			$plugin_url . 'assets/lls-frontend.js',
 			[ 'jquery' ],
-			'0.2.0',
+			'0.2.1',
 			true
 		);
 
@@ -1725,9 +1954,12 @@ class LLS_Plugin {
 			'llsStory',
 			[
 				'storyId'         => $post_id,
-				'title'           => get_the_title(),
-				'knownLang'       => $known_lang,
-				'strings'         => $ui_strings,
+				'title'               => get_the_title(),
+				'titleInTargetLang'   => function_exists( 'lls_get_story_title_in_target_lang' ) ? lls_get_story_title_in_target_lang( $post_id ) : '',
+				'knownLang'           => $known_lang,
+				'targetLang'          => $target_lang,
+				'targetSpeechLocale'  => $target_speech_locale,
+				'strings'             => $ui_strings,
 				'sentences'       => $sentences,
 				'images'          => $images_with_urls,
 				'openingImageUrl' => $opening_image_url,
@@ -1959,6 +2191,9 @@ class LLS_Plugin {
 		];
 
 		update_post_meta( $post_id, '_lls_known_lang', 'it' );
+		if ( function_exists( 'lls_story_target_lang_meta_key' ) ) {
+			update_post_meta( $post_id, lls_story_target_lang_meta_key(), 'en' );
+		}
 		update_post_meta( $post_id, '_lls_sentences', $sentences );
 
 		update_option( 'lls_sample_story_created', 1 );
