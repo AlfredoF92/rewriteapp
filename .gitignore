@@ -18,3 +18,9 @@ wp-content/upgrade/
 
 # Duplicator Lite backups (file molto grandi)
 wp-content/backups-dup-lite/
+
+# Elementor: CSS generato dall’editor (rigenerabile)
+wp-content/uploads/elementor/css/
+
+# WPForms: cache JSON rigenerabile
+wp-content/uploads/wpforms/cache/*.json
